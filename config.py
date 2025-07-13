@@ -24,7 +24,7 @@ class RAGConfig:
         max_results: int = 10
 
         # Min threshold to classify as related in similarity search
-        similarity_threshold: float = .6
+        similarity_threshold: float = .2
 
 # TODO: Instead of a single config make multiple configs for each rag component
 DEFAULT_RAG_CONFIG: RAGConfig = RAGConfig()
