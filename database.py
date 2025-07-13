@@ -2,7 +2,7 @@ from langchain.schema import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
-from config import RAGConfig 
+from config import RAGConfig, DEFAULT_RAG_CONFIG 
 
 import os 
 from typing import List 
@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class VectorStoreManager: 
-    def __init__(self, config: RAGConfig): 
+    def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.config = config 
         self.embedding_function = HuggingFaceEmbeddings(
             model_name=self.config.Database.embedding_model
