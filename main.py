@@ -1,12 +1,13 @@
 from config import RAGConfig
 from system import RAGSystem
 
+import warnings
+warnings.filterwarnings('ignore', category=Warning, module='unstructured')
+
 def main(): 
     config = RAGConfig()
-
     rag_system = RAGSystem(config)
-
-    rag_system.build_knowledge_base()
+    # rag_system.build_knowledge_base()
 
     queries = [
         "Get me the function for Attaching Shader",

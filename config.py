@@ -1,12 +1,16 @@
 from dataclasses import dataclass
+from enum import Enum
+
+class LLMModel(Enum):
+    GEMMA: str = "gemma3:4b"
+    LLAMA: str = "llama3.2:3b"
 
 
 @dataclass
 class RAGConfig: 
     """ Configuration for RAG """
-    
     corpus_path: str = "corpus"
-    ollama_model: str = "gemma3:4b"
+    llm_model: str = LLMModel.LLAMA
     
     class DocProcessor: 
         # Text Splitter chunk size and chunk conflict

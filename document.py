@@ -33,8 +33,8 @@ class DocumentProcessor:
         try: 
             loader: DirectoryLoader = DirectoryLoader(
                 path=self.config.corpus_path, 
-                glob="*.xhtml", 
-                use_multithreading=True)
+                # glob="*.xhtml",
+                use_multithreading  =True)
             
             documents = list(loader.load()) if not lazy_load else loader.lazy_load()
             logger.info(f"Loaded {len(documents)} documents from {self.config.corpus_path}")

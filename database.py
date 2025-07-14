@@ -14,16 +14,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# TODO: Shift the vector database to Qdrant for better scalability
 class VectorStoreManager: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.config = config 
+        # TODO: Use better embedding model preferrably AWS Bedrock or OpenAI
         self.embedding_function = HuggingFaceEmbeddings(
             model_name=self.config.Database.embedding_model
         )
         self.database_path = os.path.abspath(self.config.Database.database_path)
 
     def create_vector_store(self, documents: List[Document]) -> bool:
+        """ Create a vector database from the documents """
         try: 
+            # TODO: Integrate metadata checking for indexing only the updated file
             Chroma.from_documents(documents=documents, 
                                   embedding=self.embedding_function, 
                                   persist_directory=self.config.Database.database_path)
@@ -35,7 +39,7 @@ class VectorStoreManager:
             raise
 
     def load_vector_store(self) -> Chroma:
-        """Load existing vector store."""
+        """ Load existing vector store """
         try:
             if not os.path.exists(self.database_path):
                 raise FileNotFoundError(f"Vector store not found at {self.database_path}")
