@@ -1,20 +1,13 @@
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.evaluation.schema import PairwiseStringEvaluator
-from langchain_community.document_loaders import DirectoryLoader
+from langchain_community.document_loaders import PyMuPDFLoader, UnstructuredFileLoader
 from sklearn.metrics.pairwise import cosine_similarity
 
 from typing import List, Union, Iterator
-import logging
+import os 
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG
-
-# Logger config 
-logging.basicConfig(
-    filename="events.log", 
-    level=logging.INFO, 
-)
-logger = logging.getLogger(__name__)
+from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
 class DocumentProcessor: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG) -> None:
@@ -30,17 +23,35 @@ class DocumentProcessor:
 
     def load_documents(self, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]: 
         """ Load documents from corpus """
-        try: 
-            loader: DirectoryLoader = DirectoryLoader(
-                path=self.config.corpus_path, 
-                # glob="*.xhtml",
-                use_multithreading  =True)
-            
-            documents = list(loader.load()) if not lazy_load else loader.lazy_load()
-            logger.info(f"Loaded {len(documents)} documents from {self.config.corpus_path}")
+        documents = []
 
+        # TODO: Remove redundancy and make functions for each FileType
+        try:
+            for dirpath, _, filenames in os.walk(self.config.corpus_path):
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+
+                    try:
+                        if filename.lower().endswith(".pdf"):
+                            pdf_loader = PyMuPDFLoader(filepath)
+                            docs = pdf_loader.load()
+                            documents.extend(docs)
+                            logger.info(f"Loaded {len(docs)} pages from PDF file: {filename}")
+
+                        elif filename.lower().endswith((".txt", ".md", ".xhtml", ".html")):
+                            loader = UnstructuredFileLoader(filepath)
+                            docs = loader.load()
+                            # logger.info(f"Loaded {len(docs)} docs from file: {filename}")
+                            documents.extend(docs)
+
+                        else:
+                            logger.warning(f"Unsupported file format: {filename}")
+
+                    except Exception as file_err:
+                        logger.error(f"Failed to load {filename}: {file_err}")
+
+            logger.info(f"Total documents loaded: {len(documents)}")    
             return documents
-
         except Exception as e: 
             logger.error("Error loading documents: {e}")
             raise
@@ -61,7 +72,7 @@ class CosineEmbeddingEvaluator(PairwiseStringEvaluator):
         self.embedding_fn = embedding_fn
 
     def _evaluate_string_pairs(self, prediction, prediction_b, **kwargs):
-        """Evaluate similarity between two strings."""
+        """ Evaluate similarity between two strings """
         try:
             vec_a = self.embedding_fn.embed_query(prediction)
             vec_b = self.embedding_fn.embed_query(prediction_b)

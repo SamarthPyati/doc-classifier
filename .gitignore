@@ -2,6 +2,7 @@ __pycache__/
 chroma/
 corpus/
 .env
+.DS_Store
 
 *.log
 

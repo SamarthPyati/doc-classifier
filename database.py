@@ -2,17 +2,10 @@ from langchain.schema import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG 
+from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
 import os 
 from typing import List 
-import logging
-
-logging.basicConfig(
-    filename="events.log", 
-    level=logging.INFO, 
-)
-logger = logging.getLogger(__name__)
 
 # TODO: Shift the vector database to Qdrant for better scalability
 class VectorStoreManager: 
@@ -60,14 +53,12 @@ class VectorStoreManager:
         try: 
             results = db.similarity_search_with_relevance_scores(
                 query, 
-                k=self.config.Database.max_results, 
+                k = self.config.Database.max_results, 
+                score_threshold=self.config.Database.similarity_threshold
             )
-
-            # Filter results with threshold
-            filtered_results = [(doc, rank) for (doc, rank) in results if rank >= self.config.Database.similarity_threshold]
-            logger.info(f"Found {len(filtered_results)} relevant document for query: \"{query}\"")
             
-            return filtered_results
+            logger.info(f"Found {len(results)} relevant document for query: \"{query}\"")
+            return results
         except Exception as e:
             logger.error(f"Error performing similarity search: {e}")
             raise   

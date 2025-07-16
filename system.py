@@ -3,17 +3,10 @@ from langchain_ollama import OllamaLLM
 from document import DocumentProcessor, CosineEmbeddingEvaluator
 from database import VectorStoreManager
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG
+from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
-import logging
 from typing import Dict, Any, List
 from dataclasses import dataclass, field
-
-logging.basicConfig(
-    filename="events.log", 
-    level=logging.INFO, 
-)
-logger = logging.getLogger(__name__)
 
 @dataclass 
 class QueryResult:
@@ -22,13 +15,18 @@ class QueryResult:
     confidence: float   = 0.0
     num_sources: int    = 0
 
+    def __repr__(self):
+        return (f"Response: {self.response}\n"
+                f"Sources: {self.sources}\n"
+                f"Confidence: {self.confidence:.3f}\n"
+                f"Number of sources: {self.num_sources}")
+
 class RAGSystem: 
     """ Main RAG System orchestrator """
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):     
         self.config = config
         self.document_processor = DocumentProcessor(config)
         self.vector_store_manager = VectorStoreManager(config)
-        self.embedding_evaluator = CosineEmbeddingEvaluator(config)
         self.prompt_template = """
             Answer the question based only on the following context:
     
@@ -69,13 +67,13 @@ class RAGSystem:
         logger.info("Knowledge base built successfully")
 
     def query(self, question: str) -> QueryResult:
-        """Query the RAG system with a question."""
+        """ Query the RAG system with a question """
         try:
             # Perform similarity search
             results = self.vector_store_manager.similarity_search(question, self.db)
             
             if not results:
-                return QueryResult()
+                return QueryResult(response="No relevant documents found")
             
             # Prepare context
             context = "\n\n======================================================================\n\n".join([
@@ -105,12 +103,11 @@ class RAGSystem:
                 confidence = avg_confidence,
                 num_sources = len(sources)
             )
-            
         except Exception as e:
             logger.error(f"Error querying RAG system: {e}")
             return QueryResult(response=f"Error processing query: {e}")
     
     def evaluate_similarity(self, text1: str, text2: str) -> Dict[str, Any]:
-        """Evaluate similarity between two texts."""
+        """ Evaluate similarity between two texts """
         evaluator = CosineEmbeddingEvaluator(self.vector_store_manager.embedding_function)
         return evaluator.evaluate_string_pairs(text1, text2)
