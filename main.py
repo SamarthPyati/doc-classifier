@@ -3,6 +3,7 @@ from system import RAGSystem
 
 import warnings
 warnings.filterwarnings('ignore', category=Warning, module='unstructured')
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 def main(): 
     config = RAGConfig()

@@ -1,19 +1,22 @@
 from langchain.schema import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
+from chromadb.config import Settings
 
 from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
 import os 
 from typing import List 
 
-# TODO: Shift the vector database to Qdrant for better scalability
+# TODO: Migrate the vector database to Qdrant for better scalability
 class VectorStoreManager: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.config = config 
         # TODO: Use better embedding model preferrably AWS Bedrock or OpenAI
         self.embedding_function = HuggingFaceEmbeddings(
-            model_name=self.config.Database.embedding_model
+            model_name=self.config.Database.embedding_model, 
+            model_kwargs = {'device': 'mps'}, # MacOS
+            multi_process=True
         )
         self.database_path = os.path.abspath(self.config.Database.database_path)
 
@@ -23,7 +26,9 @@ class VectorStoreManager:
             # TODO: Integrate metadata checking for indexing only the updated file
             Chroma.from_documents(documents=documents, 
                                   embedding=self.embedding_function, 
-                                  persist_directory=self.config.Database.database_path)
+                                  persist_directory=self.config.Database.database_path,
+                                  client_settings=Settings(
+                                      anonymized_telemetry=False))
             
             logger.info(f"Saved {len(documents)} chunks to {self.database_path}")
 
@@ -36,7 +41,6 @@ class VectorStoreManager:
         try:
             if not os.path.exists(self.database_path):
                 raise FileNotFoundError(f"Vector store not found at {self.database_path}")
-            
             db = Chroma(
                 persist_directory=self.database_path,
                 embedding_function=self.embedding_function

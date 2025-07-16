@@ -39,11 +39,18 @@ class RAGSystem:
         self.llm = self._initialize_llm()
 
         # Load vector store
-        self.db = self.vector_store_manager.load_vector_store()
+        self.db = None
 
     def _initialize_llm(self): 
         try: 
-            return OllamaLLM(model=self.config.llm_model)
+            # Configure OllamaLLM
+            return OllamaLLM(
+                model=self.config.llm_model, 
+                num_thread=8, 
+                temperature=self.config.LLM.temperature, 
+                num_ctx=self.config.LLM.ctx_window_size, 
+                top_p=self.config.LLM.top_p, 
+            )
         except Exception as e: 
             logger.error(f"Error initializing llm: {e}")
             raise
@@ -69,6 +76,8 @@ class RAGSystem:
     def query(self, question: str) -> QueryResult:
         """ Query the RAG system with a question """
         try:
+            self.db = self.vector_store_manager.load_vector_store()
+            
             # Perform similarity search
             results = self.vector_store_manager.similarity_search(question, self.db)
             
