@@ -23,6 +23,7 @@ class QueryResult:
 
 class RAGSystem: 
     """ Main RAG System orchestrator """
+    # TODO: Implement chat feature 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):     
         self.config = config
         self.document_processor = DocumentProcessor(config)

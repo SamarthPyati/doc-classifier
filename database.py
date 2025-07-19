@@ -24,12 +24,12 @@ class VectorStoreManager:
         """ Create a vector database from the documents """
         try: 
             # TODO: Integrate metadata checking for indexing only the updated file
-            Chroma.from_documents(documents=documents, 
-                                  embedding=self.embedding_function, 
-                                  persist_directory=self.config.Database.database_path,
-                                  client_settings=Settings(
-                                      anonymized_telemetry=False))
-            
+            Chroma.from_documents(
+                documents=documents, 
+                embedding=self.embedding_function, 
+                persist_directory=self.config.Database.database_path,
+                client_settings=Settings(anonymized_telemetry=False)
+            )
             logger.info(f"Saved {len(documents)} chunks to {self.database_path}")
 
         except Exception as e: 
@@ -43,7 +43,8 @@ class VectorStoreManager:
                 raise FileNotFoundError(f"Vector store not found at {self.database_path}")
             db = Chroma(
                 persist_directory=self.database_path,
-                embedding_function=self.embedding_function
+                embedding_function=self.embedding_function,
+                client_settings=Settings(anonymized_telemetry=False)
             )
             logger.info(f"Loaded vector store from {self.database_path}")
             return db

@@ -12,6 +12,7 @@ def main():
 
     queries: list[str] = [
         "Provide a summary of procurement policay of Shimla Jal Prabandhan Nigam Limited (SJPNL).",
+        "Provide a summary of Single Tender Enquiry (STE) without a PAC and the auditing process that happens in IFCI",
     ]
 
     for query in queries:

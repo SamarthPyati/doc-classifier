@@ -4,9 +4,10 @@ import logging
 
 # Logger Config
 logging.basicConfig(
-    filename="events.log", 
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    filename="events.log", 
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
+    datefmt="%d-%m-%Y %H:%M:%S"
 )
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,21 @@ class RAGConfig:
         # Overlap token with adjancent chunks
         chunk_overlap: int = 250
 
+        # PDF specific settings
+        # pdf_strategy: str = "hi_res"  # "fast", "hi_res", "ocr_only" (for UnstructuredPDFLoader)
+        pdf_extract_images: bool = True
+        pdf_table_structure_infer_mode: str = "csv"
+
+        # Supported file extensions
+        supported_extensions: tuple = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
+
     class Database: 
         # Chroma db path to store locally
         database_path: str = "chroma"
         
-        # Embedding models (Should be belonging to sentence_transformers) = ["all-MiniLM-L6-v2", "LaBSE", "all-roberta-large-v1"]
-        embedding_model: str = "all-roberta-large-v1"
+        # Embedding models (Should be belonging to sentence_transformers) 
+        # ["all-MiniLM-L6-v2" (364), "LaBSE" (768), "all-roberta-large-v1" (1024)]
+        embedding_model: str = "LaBSE"
         
         # Max results to return after similarity search 
         max_results: int = 10
