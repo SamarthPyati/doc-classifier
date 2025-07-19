@@ -1,15 +1,24 @@
+import logging
+import yaml
+import sys
+
 from dataclasses import dataclass
 from enum import Enum
-import logging
 
-# Logger Config
+# Logger Config (file and stdout logger)
+file_handler = logging.FileHandler(filename='events.log')
+file_handler.setLevel(logging.INFO)
+
+stdout_handler = logging.StreamHandler(stream=sys.stdout)
+stdout_handler.setLevel(logging.ERROR)
+
 logging.basicConfig(
-    level=logging.INFO,
-    filename="events.log", 
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
-    datefmt="%d-%m-%Y %H:%M:%S"
+    datefmt="%d-%m-%Y %H:%M:%S", 
+    handlers=[file_handler, stdout_handler]
 )
 logger = logging.getLogger(__name__)
+
 
 class LLMModel(Enum):
     GEMMA: str = "gemma3:4b"
@@ -52,11 +61,19 @@ class RAGConfig:
         #       if a tiny model is used lowering would the threshold to about .2 ~ .3 would be good
         similarity_threshold: float = .2
 
+        collection_name: str = "documents"
+
     class LLM:
         temperature: float = 0.1
         ctx_window_size: int = 2048
         top_p: float = 0.9
 
-# TODO: Instead of a single config make multiple configs for each rag component
+    @classmethod
+    def load_config_from_yaml(cls, file_path: str): 
+        """ Load configuration externally from a yaml file """
+        with open(file_path, 'r') as f: 
+            config = yaml.safe_load(f)
+        return cls(**config)
+
 DEFAULT_RAG_CONFIG: RAGConfig = RAGConfig()
 
