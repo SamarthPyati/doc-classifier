@@ -1,5 +1,6 @@
 from langchain_ollama import OllamaLLM
 
+from langchain_chroma import Chroma
 from document import DocumentProcessor, CosineEmbeddingEvaluator
 from database import VectorStoreManager
 
@@ -77,7 +78,7 @@ class RAGSystem:
     def query(self, question: str) -> QueryResult:
         """ Query the RAG system with a question """
         try:
-            self.db = self.vector_store_manager.load_vector_store()
+            self.db: Chroma = self.vector_store_manager.load_vector_store()
             
             # Perform similarity search
             results = self.vector_store_manager.similarity_search(question, self.db)
@@ -120,4 +121,4 @@ class RAGSystem:
     def evaluate_similarity(self, text1: str, text2: str) -> Dict[str, Any]:
         """ Evaluate similarity between two texts """
         evaluator = CosineEmbeddingEvaluator(self.vector_store_manager.embedding_function)
-        return evaluator.evaluate_string_pairs(text1, text2)
+        return evaluator.evaluate_string_pairs(text1=text1, text2=text2)

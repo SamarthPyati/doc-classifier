@@ -4,6 +4,7 @@ import sys
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Literal
 
 # Logger Config (file and stdout logger)
 file_handler = logging.FileHandler(filename='events.log')
@@ -21,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class LLMModel(Enum):
-    GEMMA: str = "gemma3:4b"
-    LLAMA: str = "llama3.2:3b"
+    GEMMA = "gemma3:4b"
+    LLAMA = "llama3.2:3b"
 
 @dataclass
 class RAGConfig: 
@@ -40,7 +41,7 @@ class RAGConfig:
         # PDF specific settings
         # pdf_strategy: str = "hi_res"  # "fast", "hi_res", "ocr_only" (for UnstructuredPDFLoader)
         pdf_extract_images: bool = True
-        pdf_table_structure_infer_mode: str = "csv"
+        pdf_table_structure_infer_mode: Literal['csv', 'markdown', 'html', None] = 'csv'
 
         # Supported file extensions
         supported_extensions: tuple = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
@@ -51,7 +52,7 @@ class RAGConfig:
         
         # Embedding models (Should be belonging to sentence_transformers) 
         # ["all-MiniLM-L6-v2" (364), "LaBSE" (768), "all-roberta-large-v1" (1024)]
-        embedding_model: str = "LaBSE"
+        embedding_model: str = "all-MiniLM-L6-v2"
         
         # Max results to return after similarity search 
         max_results: int = 10

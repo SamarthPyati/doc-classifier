@@ -5,6 +5,7 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader, 
     UnstructuredFileLoader, 
 )
+
 from sklearn.metrics.pairwise import cosine_similarity
 
 import os 
@@ -25,11 +26,11 @@ class DocumentProcessor:
             length_function=len,
             is_separator_regex=False,
         )
-        self.processed_files = set()
+        self.processed_files: set = set()
 
     def _get_document_hash(self, document: Document) -> str: 
         """ Get the hash of a Document required for checking change in document content """
-        return hashlib.md5(document.page_content).hexdigest()
+        return hashlib.md5((document.page_content).encode()).hexdigest()
     
     def _get_file_hash(self, file_path: str, size: int = 4096) -> str: 
         """ Get the hash of first 'size' bytes of file content """
@@ -42,10 +43,10 @@ class DocumentProcessor:
             loader = PyMuPDFLoader(
                     file_path,
                     extract_images=self.config.DocProcessor.pdf_extract_images, 
-                    extract_tables=self.config.DocProcessor.pdf_table_structure_infer_mode 
+                    extract_tables=self.config.DocProcessor.pdf_table_structure_infer_mode
                 )
             docs = loader.load() if not lazy_load else loader.lazy_load()
-
+            
             # Update file metadata 
             file_hash = self._get_file_hash(file_path)
             for doc in docs: 
@@ -85,7 +86,7 @@ class DocumentProcessor:
 
     def load_documents(self, force_reload: bool = False) -> List[Document]: 
         """ Load documents from corpus """
-        documents = []
+        documents: List[Document] = []
         processed_count = 0
         try:
             corpus_path = Path(self.config.corpus_path)
@@ -101,18 +102,18 @@ class DocumentProcessor:
                     continue
 
                 # Check if file already processed (unless force reload)
-                file_key = f"{file_path}_{self._get_file_hash(file_path)}"
+                file_key = f"{file_path}_{self._get_file_hash(str(file_path))}"
                 if not force_reload and file_key in self.processed_files:
                     logger.info(f"Skipping already processed file: {file_path.name}")
                     continue
 
-                docs = self._load_document(file_path)
+                docs = list(self._load_document(str(file_path)))
                 if docs: 
                     documents.extend(docs)
                     processed_count += 1
                     self.processed_files.add(file_key)
-                    logger.info(f"Loaded {len(docs)} from file {file_path}")    
-
+                    logger.info(f"Loaded {len(docs)} from file {file_path}")
+                    
             logger.info(f"Total files processed: {processed_count}")
             logger.info(f"Total documents loaded: {len(documents)}")
             return documents

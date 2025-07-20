@@ -19,6 +19,7 @@ class VectorStoreManager:
         self.config = config 
         # TODO: Use better embedding model preferrably AWS Bedrock or OpenAI
         self.embedding_function = None
+        
         if True: 
             self.embedding_function = HuggingFaceEmbeddings(
                 model_name=self.config.Database.embedding_model, 
@@ -31,10 +32,11 @@ class VectorStoreManager:
             )
 
         self.database_path = os.path.abspath(self.config.Database.database_path)
+        self.collection_name = self.config.Database.collection_name
 
+    # TODO: Integrate metadata checking for indexing only the updated file
     def create_vector_store(self, documents: List[Document], overwrite: bool = False) -> bool:
         """ Create a vector database from the documents """
-        # TODO: Integrate metadata checking for indexing only the updated file
         try: 
             if overwrite or Path(self.database_path).exists(): 
                 import shutil 
@@ -46,6 +48,7 @@ class VectorStoreManager:
                 
             Chroma.from_documents(
                 documents=documents, 
+                collection_name=self.collection_name, 
                 embedding=self.embedding_function, 
                 persist_directory=self.config.Database.database_path,
                 client_settings=Settings(anonymized_telemetry=False)
@@ -63,11 +66,11 @@ class VectorStoreManager:
                 raise FileNotFoundError(f"Vector store not found at {self.database_path}")
             
             db = Chroma(
+                collection_name=self.collection_name, 
                 persist_directory=self.database_path,
                 embedding_function=self.embedding_function,
                 client_settings=Settings(anonymized_telemetry=False)
             )
-
             logger.info(f"Loaded vector store from {self.database_path}")
             return db
             
