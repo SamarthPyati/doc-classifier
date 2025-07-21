@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 def main(): 
     config = RAGConfig()
     rag_system = RAGSystem(config)
-    rag_system.build_knowledge_base()
+    # rag_system.build_knowledge_base()
 
     queries: list[str] = [
         "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",

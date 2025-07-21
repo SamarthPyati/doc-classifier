@@ -1,5 +1,5 @@
 __pycache__/
-chroma/
+chroma*/
 corpus/
 .env
 .DS_Store
@@ -7,3 +7,4 @@ corpus/
 *.log
 
 *.ipynb
+probe

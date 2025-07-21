@@ -83,7 +83,6 @@ class DocumentProcessor:
             logger.error(f"Error in loading file {file_path}:{e}")
             return []
 
-
     def load_documents(self, force_reload: bool = False) -> List[Document]: 
         """ Load documents from corpus """
         documents: List[Document] = []
@@ -126,12 +125,6 @@ class DocumentProcessor:
         """ Split the documents into chunks which are smaller constituent documents """
         try: 
             chunks = self.text_splitter.split_documents(documents=documents)
-
-            # Add chunk metadata
-            for chunk_id, chunk in enumerate(chunks): 
-                chunk.metadata.update({
-                    'chunk_id': chunk_id, 
-                })
             return chunks
         except Exception as e: 
             logger.error("Error splitting documents: {e}")
