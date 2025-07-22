@@ -41,6 +41,8 @@ class RAGSystem:
         self.llm = None
         self._initialize_llm()
 
+        self.conversation = []
+
     def _get_prompt_template(self) -> PromptTemplate: 
         return PromptTemplate(
             input_variables=["context", "question"],
@@ -74,6 +76,7 @@ class RAGSystem:
             
             # Test the LLM connection
             test_response = self.llm.invoke("Hello")
+
             logger.info(f"LLM initialized successfully with model: {self.config.llm_model}")
             return True
             
@@ -84,33 +87,32 @@ class RAGSystem:
 
     # TODO: Automatically detect new document upload and rebuild the knowledge base
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
-        """ Build the knowledge base from documents """
+        """ Build the knowledge base i.e index the database from documents """
         try: 
-            start_time = time.time()
+            start_time = time.perf_counter()
             logger.info("Building knowledge base...")
             
+            # Retrieve Document from Database here
+            db = self.vector_store_manager.load_vector_store()
+
             # Load and process documents
             documents = self.document_processor.load_documents(force_reload=force_rebuild)
             if not documents:
                 logger.error("No documents found to process")
                 return False
-                
             
             # Split documents into chunks
             chunks = self.document_processor.split_documents(documents)
 
             chunk_ids = self.vector_store_manager.calculate_chunk_ids(chunks)
-            success = self.vector_store_manager.create_vector_store(
-                chunks, 
-                ids=chunk_ids, 
-                overwrite=force_rebuild
-            )
+
+            success = self.vector_store_manager.add_documents(chunks)
             
             if success:
-                build_time = time.time() - start_time
+                build_time = time.perf_counter() - start_time
                 logger.info(f"Knowledge base built successfully in {build_time:.2f} seconds")
                 logger.info(f"Total chunks indexed: {len(chunks)}")
-                logger.info("=" * 60)
+                logger.info("=" * 80)
                 return True
             else:
                 logger.error("Failed to create vector store")
@@ -119,7 +121,12 @@ class RAGSystem:
         except Exception as e: 
             logger.error(f"Error building knowledge Base: {e}")
             return False
-        
+    
+    # IDEATE: How will this query system work?
+    # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
+    # Optimal approach would be to query the entire corpus once and store that context into the conversation (Make a conversation 
+    # class) and use that to answer the follow up questions. 
+
     def query(self, question: str) -> QueryResult:
         """ Query the RAG system with a question """
         try:    
@@ -169,6 +176,7 @@ class RAGSystem:
                 confidence = avg_confidence,
                 num_sources = len(sources)
             )
+
         except Exception as e:
             logger.error(f"Error querying RAG system: {e}")
             return QueryResult(response=f"Error processing query: {e}")
