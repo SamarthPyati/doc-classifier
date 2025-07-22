@@ -15,7 +15,7 @@ stdout_handler.setFormatter(logging.Formatter("%(name)s - %(levelname)s - %(mess
 stdout_handler.setLevel(logging.INFO)
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
+    format="[%(asctime)s] - %(name)s - %(levelname)s - %(message)s", 
     datefmt="%d-%m-%Y %H:%M:%S", 
     handlers=[file_handler, stdout_handler],
     level=logging.INFO

@@ -32,23 +32,7 @@ class RAGSystem:
         self.vector_store_manager = VectorStoreManager(config)
 
         # Make prompt template
-        self.prompt_template = PromptTemplate(
-            input_variables=["context", "question"],
-            template="""You are a helpful AI assistant working for a consulting firm that answers questions based on the provided context.
-
-            Context Information:
-            {context}
-
-            Question: {question}
-
-            Instructions:
-            - Answer the question using ONLY the information provided in the context above
-            - If the context doesn't contain enough information to answer the question, say "I don't have enough information to answer this question based on the provided context"
-            - Be concise but comprehensive in your response
-            - If you mention specific details, indicate which document they came from when possible
-
-            Answer:"""
-        )
+        self.prompt_template = self._get_prompt_template()
 
         # Load vector store
         self.db = None
@@ -56,6 +40,25 @@ class RAGSystem:
         # LLM Initialization
         self.llm = None
         self._initialize_llm()
+
+    def _get_prompt_template(self) -> PromptTemplate: 
+        return PromptTemplate(
+            input_variables=["context", "question"],
+            template="""You are an expert AI assistant that provides accurate, comprehensive answers based on the given context.
+        Context Information:
+        {context}
+        
+        Question: {question}
+        
+        Instructions:
+        - Answer using ONLY the provided context
+        - Be comprehensive yet concise
+        - If context is insufficient, state this clearly
+        - Cite specific sources when mentioning details
+        - Provide structured, actionable information when possible
+        
+        Answer:"""
+        )
 
     def _initialize_llm(self) -> bool: 
         """ Initializing LLM """
