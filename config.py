@@ -70,7 +70,7 @@ class RAGConfig:
         collection_name: str = "rag_documents"
         
         # Select the embedding provider from Hugginface or Google  
-        embedding_provider: str = EmbeddingProvider.HUGGINGFACE
+        embedding_provider: str = EmbeddingProvider.GOOGLE
 
         # HuggingFace Embedding models (Should be belonging to sentence_transformers) 
         # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
