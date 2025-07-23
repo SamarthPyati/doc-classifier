@@ -1,7 +1,8 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chat_models import init_chat_model
-from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 from document import DocumentProcessor
 from database import VectorStoreManager
@@ -46,12 +47,14 @@ class RAGSystem:
         self.llm = None
         self._initialize_llm()
 
-        self.conversation = []
+        # RAG Chain initialization 
+        self.chain = None
+        self._initialize_rag_chain()
 
     def _get_prompt_template(self) -> PromptTemplate: 
         return PromptTemplate(
             input_variables=["context", "question"],
-            template="""You are an expert AI assistant that provides accurate, comprehensive answers based on the given context.
+            template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
         Context Information:
         {context}
         
@@ -60,7 +63,7 @@ class RAGSystem:
         Instructions:
         - Answer using ONLY the provided context
         - Be comprehensive yet concise
-        - If context is insufficient, state this clearly
+        - If context is insufficient, state this clearly, do not make up any answers by yourself
         - Cite specific sources when mentioning details
         - Provide structured, actionable information when possible
         
@@ -108,6 +111,13 @@ class RAGSystem:
             logger.error(f"Error initializing LLM: {e}")
             return False
 
+    def _initialize_rag_chain(self):
+        # Set up RAG chain with LCEL (https://python.langchain.com/docs/concepts/lcel/) sequences  
+        try: 
+            self.chain = self.prompt_template | self.llm | StrOutputParser()
+        except Exception as e:
+            logger.error(f"Error initializing RAG Chain: {e}", exc_info=True)
+            raise
 
     # TODO: Automatically detect new document upload and rebuild the knowledge base
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
@@ -151,9 +161,6 @@ class RAGSystem:
             if not self.llm:
                 if not self._initialize_llm():
                     return QueryResult(response="LLM not available. Please check LLM Service.")
-            
-            if not self.db: 
-                self.db = self.vector_store_manager.load_vector_store()
                 
             # Perform similarity search
             results = self.vector_store_manager.similarity_search(question, self.db)
@@ -166,19 +173,8 @@ class RAGSystem:
                 doc.page_content for doc, _score in results
             ])
             
-            # Generate prompt
-            prompt = self.prompt_template.format(context=context, question=question)
-            
             try:
-                if hasattr(self.llm, 'invoke'):
-                    if self.config.LLM.llm_model in [LLMModel.GEMINI_FLASH or LLMModel.GEMINI_PRO]: 
-                        # Gemini LLM provide response as a big dictionary, so extract content out of it
-                        response = self.llm.invoke(prompt).content
-                    else: 
-                        response = self.llm.invoke(prompt)
-                else:
-                    response = self.llm.predict(prompt).content
-
+                response = self.chain.invoke({'context': context, 'question': question})
             except Exception as e:
                 logger.error(f"LLM invocation failed: {e}. If using OLLAMA check if the server is started.")
                 return QueryResult(
