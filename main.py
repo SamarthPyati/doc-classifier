@@ -7,7 +7,6 @@ warnings.filterwarnings('ignore', category=Warning, module='unstructured')
 warnings.filterwarnings('ignore', category=UserWarning, module='resource_tracker')      # TODO: Understand and fix semaphore leaks
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-from config import DEFAULT_RAG_CONFIG
 
 from argparse import ArgumentParser
 
@@ -58,7 +57,7 @@ def main():
                 print(result)
         else: 
             rag_system = RAGSystem(config)
-            # rag_system.build_knowledge_base()
+            rag_system.build_knowledge_base()
 
             queries: list[str] = [
                 "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",

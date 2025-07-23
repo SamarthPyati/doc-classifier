@@ -5,7 +5,6 @@ from langchain_community.document_loaders import (
     UnstructuredFileLoader, 
 )
 
-import os 
 import hashlib
 from pathlib import Path
 from typing import List, Union, Iterator
@@ -115,7 +114,7 @@ class DocumentProcessor:
             return documents
         
         except Exception as e: 
-            logger.error("Error loading documents: {e}")
+            logger.error(f"Error loading documents: {e}")
             raise
 
     def split_documents(self, documents: List[Document]) -> List[Document]: 
@@ -124,5 +123,5 @@ class DocumentProcessor:
             chunks = self.text_splitter.split_documents(documents=documents)
             return chunks
         except Exception as e: 
-            logger.error("Error splitting documents: {e}")
+            logger.error(f"Error splitting documents: {e}")
             raise

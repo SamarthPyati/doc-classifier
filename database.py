@@ -2,14 +2,13 @@ from langchain.schema import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from chromadb.config import Settings
-import chromadb
 
 from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -119,8 +118,8 @@ class VectorStoreManager:
             new_chunks = []
             new_ids = []
             for chunk in chunks:    
-                if chunk["id"] not in existing_ids: 
-                    new_ids.append(chunk["id"])
+                if chunk.metadata["id"] not in existing_ids: 
+                    new_ids.append(chunk.metadata["id"])
                     new_chunks.append(chunk)
 
             if len(new_chunks):

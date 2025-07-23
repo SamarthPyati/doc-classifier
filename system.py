@@ -1,14 +1,12 @@
 from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
-from langchain_chroma import Chroma
 from document import DocumentProcessor
-from embedding import CosineEmbeddingEvaluator
 from database import VectorStoreManager
 
 from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
 
 import time
-from typing import Dict, Any, List
+from typing import List
 from dataclasses import dataclass, field
 
 @dataclass 
@@ -181,8 +179,3 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"Error querying RAG system: {e}")
             return QueryResult(response=f"Error processing query: {e}")
-    
-    def evaluate_similarity(self, text1: str, text2: str) -> Dict[str, Any]:
-        """ Evaluate similarity between two texts """
-        evaluator = CosineEmbeddingEvaluator(self.vector_store_manager.embedding_function)
-        return evaluator.evaluate_string_pairs(prediction=text1, prediction_b=text2)
