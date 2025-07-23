@@ -1,7 +1,8 @@
 from langchain_ollama import OllamaLLM
 from langchain.prompts import PromptTemplate
 from langchain_chroma import Chroma
-from document import DocumentProcessor, CosineEmbeddingEvaluator
+from document import DocumentProcessor
+from embedding import CosineEmbeddingEvaluator
 from database import VectorStoreManager
 
 from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
