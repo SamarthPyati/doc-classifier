@@ -9,7 +9,10 @@ import hashlib
 from pathlib import Path
 from typing import List, Union, Iterator
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
+from config import RAGConfig, DEFAULT_RAG_CONFIG
+
+import logging
+logger = logging.getLogger(__name__)
 
 class DocumentProcessor: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG) -> None:
@@ -103,7 +106,7 @@ class DocumentProcessor:
                     continue
 
                 docs = list(self._load_document(str(file_path)))
-                if docs: 
+                if docs is not None: 
                     documents.extend(docs)
                     processed_count += 1
                     self.processed_files.add(file_key)

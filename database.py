@@ -3,13 +3,16 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from chromadb.config import Settings
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
+from config import RAGConfig, DEFAULT_RAG_CONFIG
 
 import os
 import shutil
 from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
+
+import logging
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -38,9 +41,10 @@ class VectorStoreManager:
     def load_vector_store(self) -> Chroma:
         """ Get or create ChromaDB client with proper settings """
         try: 
-            if not Path(self.database_path).exists():
-                logger.warning(f"Vector store not found at {self.database_path}")
-                return None
+            # if not Path(self.database_path).exists():
+            #     # If chroma doesn`t exists create it
+            #     logger.warning(f"Vector store not found at {self.database_path}")
+            #     return None
 
             db = Chroma(
                 collection_name=self.collection_name, 
@@ -76,6 +80,7 @@ class VectorStoreManager:
             return False
 
     def calculate_chunk_ids(self, chunks: List[Document]):
+        """ Assigns unique chunk IDs to each Document in the provided list based on their source and page metadata """
         # This will create IDs like "procurement.pdf:6:2"
         # ID Structure Format => "Page Source:Page Number:Chunk Index"
         last_page_id = None
@@ -98,7 +103,6 @@ class VectorStoreManager:
 
             chunk.metadata["id"] = chunk_id
 
-        return chunks
 
     def add_documents(self, chunks: List[Document]) -> bool:
         """ Add new documents to existing vector store """
@@ -108,7 +112,7 @@ class VectorStoreManager:
                 return False
 
             # Get chunks with ids 
-            chunks_with_ids = self.calculate_chunk_ids(chunks)
+            self.calculate_chunk_ids(chunks)
             
             existing_items = self._db.get(include=[])
             existing_ids = set(existing_items["ids"])
@@ -123,7 +127,7 @@ class VectorStoreManager:
                     new_chunks.append(chunk)
 
             if len(new_chunks):
-                logger.info(f"Adding {len(new_chunks)} new documents")
+                logger.info(f"Adding {len(new_chunks)} new chunks to the database")
                 self._db.add_documents(new_chunks, ids=new_ids)
                 return True
             else:

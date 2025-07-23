@@ -3,11 +3,14 @@ from langchain.prompts import PromptTemplate
 from document import DocumentProcessor
 from database import VectorStoreManager
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG, logger
+from config import RAGConfig, DEFAULT_RAG_CONFIG
 
 import time
 from typing import List
 from dataclasses import dataclass, field
+
+import logging
+logger = logging.getLogger(__name__)
 
 @dataclass 
 class QueryResult:
@@ -74,7 +77,7 @@ class RAGSystem:
             )
             
             # Test the LLM connection
-            test_response = self.llm.invoke("Hello")
+            self.llm.invoke("Hello")
 
             logger.info(f"LLM initialized successfully with model: {self.config.llm_model}")
             return True
@@ -92,9 +95,9 @@ class RAGSystem:
             logger.info("Building knowledge base...")
             
             # Retrieve Document from Database here
-            db = self.vector_store_manager.load_vector_store()
+            # self.vector_store_manager.load_vector_store()
 
-            # Load and process documents
+        # Load and process documents
             documents = self.document_processor.load_documents(force_reload=force_rebuild)
             if not documents:
                 logger.error("No documents found to process")
@@ -102,8 +105,6 @@ class RAGSystem:
             
             # Split documents into chunks
             chunks = self.document_processor.split_documents(documents)
-
-            chunk_ids = self.vector_store_manager.calculate_chunk_ids(chunks)
 
             success = self.vector_store_manager.add_documents(chunks)
             

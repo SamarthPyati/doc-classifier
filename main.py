@@ -1,4 +1,7 @@
-from config import RAGConfig, logger
+import logging
+from argparse import ArgumentParser
+
+from config import RAGConfig
 from system import RAGSystem
 
 import sys
@@ -7,8 +10,7 @@ warnings.filterwarnings('ignore', category=Warning, module='unstructured')
 warnings.filterwarnings('ignore', category=UserWarning, module='resource_tracker')      # TODO: Understand and fix semaphore leaks
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-
-from argparse import ArgumentParser
+logger = logging.getLogger(__name__)
 
 def parser(config: RAGConfig):
     parser = ArgumentParser(

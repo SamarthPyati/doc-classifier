@@ -11,15 +11,16 @@ file_handler = logging.FileHandler(filename='events.log')
 file_handler.setLevel(logging.INFO)
 
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setFormatter(logging.Formatter("%(name)s - %(levelname)s - %(message)s"))
+stdout_handler.setFormatter(logging.Formatter("%(filename)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
 stdout_handler.setLevel(logging.INFO)
 
 logging.basicConfig(
-    format="[%(asctime)s] %(name)s - %(levelname)s - %(message)s", 
+    format="[%(asctime)s] %(filename)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s", 
     datefmt="%d-%m-%Y %H:%M:%S", 
     handlers=[file_handler, stdout_handler],
     level=logging.INFO
 )
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,9 +29,9 @@ class LLMModel(Enum):
     LLAMA = "llama3.2:3b"
 
 class EmbeddingModel(Enum):
-    MINI_LM = "all-MiniLM-L6-v2"
-    LABSE = "LaBSE"
-    ROBERTA = "all-roberta-large-v1"
+    MINI_LM = "all-MiniLM-L6-v2"            # Embedding length - 364
+    LABSE   = "LaBSE"                       # Embedding length - 728
+    ROBERTA = "all-roberta-large-v1"        # Embedding length - 1024
 
 @dataclass
 class RAGConfig: 
