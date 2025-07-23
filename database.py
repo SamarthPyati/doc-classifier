@@ -4,6 +4,7 @@ from langchain_chroma import Chroma
 from chromadb.config import Settings
 
 from config import RAGConfig, DEFAULT_RAG_CONFIG
+from embedding import Embeddings
 
 import os
 import shutil
@@ -21,30 +22,16 @@ class VectorStoreManager:
         self.config = config 
         self.database_path = os.path.abspath(self.config.Database.database_path)
         self.collection_name = self.config.Database.collection_name
-        
-        self.embedding_function = None
-        # TODO: separate embeddings into its own module
-        # Initialize Embedding Function
-        try:
-            self.embedding_function = HuggingFaceEmbeddings(
-                model_name=self.config.Database.embedding_model, 
-                model_kwargs={'device' : 'cpu'},  
-                encode_kwargs={'normalize_embeddings': self.config.Database.normalize_embeddings}
-            )
-            logger.info(f"Initialized embedding model: {self.config.Database.embedding_model}")
-        except Exception as e:
-            logger.error(f"Error initializing embedding model: {e}")
-            raise
+        self.embedding_function = Embeddings(config).get_embedding_model()
     
         self._db = self.load_vector_store()
 
     def load_vector_store(self) -> Chroma:
         """ Get or create ChromaDB client with proper settings """
         try: 
-            # if not Path(self.database_path).exists():
-            #     # If chroma doesn`t exists create it
-            #     logger.warning(f"Vector store not found at {self.database_path}")
-            #     return None
+            if not Path(self.database_path).exists():
+                # If chroma doesn`t exists create it
+                logger.warning(f"Vector store not found at {self.database_path}. Creating a new one ...")
 
             db = Chroma(
                 collection_name=self.collection_name, 
@@ -151,7 +138,7 @@ class VectorStoreManager:
             # Perform similarity search
             results = db.similarity_search_with_relevance_scores(
                 query, 
-                k=self.config.Database.max_results
+                k=self.config.Database.max_results 
             )
 
             # Filter by threshold and sort by relevance

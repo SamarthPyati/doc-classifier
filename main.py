@@ -16,7 +16,8 @@ def parser(config: RAGConfig):
     parser = ArgumentParser(
         prog="Document Classifier",
         description="A RAG Pipeline to retrieve relevant documents for LLM interaction.",
-        usage="python main.py <command> [options]"
+        usage="python main.py <command> [options]", 
+        add_help=True
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -38,15 +39,15 @@ def parser(config: RAGConfig):
 
     return parser.parse_args() 
 
-ENABLE_PARSER: bool = False
+ENABLE_PARSER: bool = True
 
 def main(): 
     config = RAGConfig()    
-    rag_system = RAGSystem(config)
 
     try: 
         if ENABLE_PARSER: 
             args = parser(config)
+            rag_system = RAGSystem(config)
 
             if args.command == "index":
                 config.corpus_path = args.corpus_path

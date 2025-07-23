@@ -7,15 +7,15 @@ from enum import Enum
 from typing import Literal
 
 # Logger Config (file and stdout logger)
-file_handler = logging.FileHandler(filename='events.log')
+file_handler = logging.FileHandler(filename='events.log', )
 file_handler.setLevel(logging.INFO)
 
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setFormatter(logging.Formatter("%(filename)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s"))
+stdout_handler.setFormatter(logging.Formatter("%(filename)s:%(lineno)d:%(funcName)s - %(levelname)s - %(message)s"))
 stdout_handler.setLevel(logging.INFO)
 
 logging.basicConfig(
-    format="[%(asctime)s] %(filename)s:%(funcName)s:%(lineno)d - %(levelname)s - %(message)s", 
+    format="[%(asctime)s] %(filename)s:%(lineno)d:%(funcName)s - %(levelname)s - %(message)s", 
     datefmt="%d-%m-%Y %H:%M:%S", 
     handlers=[file_handler, stdout_handler],
     level=logging.INFO
@@ -28,7 +28,12 @@ class LLMModel(Enum):
     GEMMA = "gemma3:4b"
     LLAMA = "llama3.2:3b"
 
-class EmbeddingModel(Enum):
+
+class EmbeddingProvider(Enum):
+    HUGGINGFACE = "HuggingFace"
+    GOOGLE = "Google-Gemini"
+
+class EmbeddingModelHuggingFace(Enum):
     MINI_LM = "all-MiniLM-L6-v2"            # Embedding length - 364
     LABSE   = "LaBSE"                       # Embedding length - 728
     ROBERTA = "all-roberta-large-v1"        # Embedding length - 1024
@@ -64,16 +69,19 @@ class RAGConfig:
         
         collection_name: str = "rag_documents"
         
-        # Embedding models (Should be belonging to sentence_transformers) 
+        # Select the embedding provider from Hugginface or Google  
+        embedding_provider: str = EmbeddingProvider.HUGGINGFACE
+
+        # HuggingFace Embedding models (Should be belonging to sentence_transformers) 
         # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
-        embedding_model: str = EmbeddingModel.MINI_LM.value
+        embedding_model: str = EmbeddingModelHuggingFace.MINI_LM.value
 
         # Batch operations
         batch_size: int = 1000
         normalize_embeddings: bool = True
         
         # Max results to return after similarity search 
-        max_results: int = 5
+        max_results: int = 10
 
         # Min threshold to classify as related in similarity search
         similarity_threshold: float = 0.3

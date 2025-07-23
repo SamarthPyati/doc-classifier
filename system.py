@@ -37,7 +37,7 @@ class RAGSystem:
         self.prompt_template = self._get_prompt_template()
 
         # Load vector store
-        self.db = None
+        self.db = self.vector_store_manager.load_vector_store()
         
         # LLM Initialization
         self.llm = None
@@ -94,10 +94,7 @@ class RAGSystem:
             start_time = time.perf_counter()
             logger.info("Building knowledge base...")
             
-            # Retrieve Document from Database here
-            # self.vector_store_manager.load_vector_store()
-
-        # Load and process documents
+            # Load and process documents
             documents = self.document_processor.load_documents(force_reload=force_rebuild)
             if not documents:
                 logger.error("No documents found to process")
