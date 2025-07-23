@@ -76,7 +76,7 @@ class RAGConfig:
         # Select the embedding provider from Hugginface or Google  
         embedding_provider: str = EmbeddingProvider.GOOGLE
 
-        # HuggingFace Embedding models (Should be belonging to sentence_transformers) 
+        # HuggingFace Embedding models (set embedding_provider to HUGGINGFACE) 
         # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
         embedding_model: str = EmbeddingModelHuggingFace.MINI_LM.value
 
@@ -87,8 +87,9 @@ class RAGConfig:
         # Max results to return after similarity search 
         max_results: int = 10
 
+        # NOTE: Set threshold to a lower value preferrably .2 or .3 if using a lightweight embedding model 
         # Min threshold to classify as related in similarity search
-        similarity_threshold: float = 0.3
+        similarity_threshold: float = 0.7
 
         # Reranking
         enable_reranking: bool = True
@@ -115,3 +116,6 @@ class RAGConfig:
         return cls(**config)
 
 DEFAULT_RAG_CONFIG: RAGConfig = RAGConfig()
+
+# TODO: Validation with Pydantic BaseSettings
+# TODO: Make separate classes for each config rather than monolithic approach

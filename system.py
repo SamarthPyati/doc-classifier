@@ -1,6 +1,8 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chat_models import init_chat_model
 from langchain.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
 from document import DocumentProcessor
 from database import VectorStoreManager
 
@@ -141,7 +143,6 @@ class RAGSystem:
     # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
     # Optimal approach would be to query the entire corpus once and store that context into the conversation (Make a conversation 
     # class) and use that to answer the follow up questions. 
-
     def query(self, question: str) -> QueryResult:
         """ Query the RAG system with a question """
         try:    
