@@ -33,6 +33,9 @@ class LLMModel(Enum):
     GEMINI_FLASH = "gemini-2.5-flash"
     GEMINI_PRO = "gemini-2.5-pro"
 
+class LLMModelProvider(Enum):
+    GOOGLE = "google_genai"
+
 class EmbeddingProvider(Enum):
     HUGGINGFACE = "HuggingFace"
     GOOGLE = "Google-Gemini"
@@ -46,7 +49,6 @@ class EmbeddingModelHuggingFace(Enum):
 class RAGConfig: 
     """ Configuration for RAG """
     corpus_path: str = "corpus"
-    llm_model: str = LLMModel.GEMINI_FLASH.value
     
     @dataclass
     class DocProcessor: 
@@ -98,9 +100,15 @@ class RAGConfig:
 
     @dataclass
     class LLM:
+        llm_model: str = LLMModel.GEMINI_FLASH.value
+        llm_provider: str = LLMModelProvider.GOOGLE.value
+
+        # LLM Hyperparams 
         temperature: float = 0.1
-        ctx_window_size: int = 4096
         top_p: float = 0.9
+
+        # LLM Hyperparams (for local running models via ollama)
+        ctx_window_size: int = 4096
         num_threads: int = 4
 
         # Performance settings

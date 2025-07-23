@@ -70,11 +70,13 @@ class RAGSystem:
     def _initialize_llm(self) -> bool:
         """Initialize the LLM based on configuration."""
         try:
-            model_name = self.config.llm_model
+            model_name = self.config.LLM.llm_model
 
             if model_name.strip().startswith("gemini"):
                 self.llm = ChatGoogleGenerativeAI(
-                    model=model_name
+                    model=model_name, 
+                    temperature=self.config.LLM.temperature,
+                    top_p=self.config.LLM.top_p,
                 )
 
             elif model_name.startswith("llama") or model_name.startswith("gemma"):
