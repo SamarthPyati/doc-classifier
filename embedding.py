@@ -10,7 +10,7 @@ class Embeddings:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):
         self.config = config
         self.embedding_provider = self.config.Database.embedding_provider
-        self.embedding_model = self.config.Database.embedding_model
+        self.embedding_model = self.config.Database.embedding_model_hugging_face.value
 
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:
         try:

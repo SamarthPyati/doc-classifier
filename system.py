@@ -70,7 +70,7 @@ class RAGSystem:
     def _initialize_llm(self) -> bool:
         """Initialize the LLM based on configuration."""
         try:
-            model_name = self.config.LLM.llm_model
+            model_name = self.config.LLM.llm_model.value
 
             if model_name.strip().startswith("gemini"):
                 self.llm = ChatGoogleGenerativeAI(
@@ -171,11 +171,16 @@ class RAGSystem:
             
             try:
                 if hasattr(self.llm, 'invoke'):
-                    response = self.llm.invoke(prompt).content
+                    if self.config.LLM.llm_model in [LLMModel.GEMINI_FLASH or LLMModel.GEMINI_PRO]: 
+                        # Gemini LLM provide response as a big dictionary, so extract content out of it
+                        response = self.llm.invoke(prompt).content
+                    else: 
+                        response = self.llm.invoke(prompt)
                 else:
-                    response = self.llm.predict(prompt)
+                    response = self.llm.predict(prompt).content
+
             except Exception as e:
-                logger.error(f"LLM invocation failed: {e}")
+                logger.error(f"LLM invocation failed: {e}. If using OLLAMA check if the server is started.")
                 return QueryResult(
                     response="Sorry, I encountered an error while generating the response. Please try again."
                 )

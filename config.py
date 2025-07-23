@@ -76,11 +76,11 @@ class RAGConfig:
         collection_name: str = "rag_documents"
         
         # Select the embedding provider from Hugginface or Google  
-        embedding_provider: str = EmbeddingProvider.GOOGLE
+        embedding_provider: EmbeddingProvider = EmbeddingProvider.GOOGLE
 
         # HuggingFace Embedding models (set embedding_provider to HUGGINGFACE) 
         # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
-        embedding_model: str = EmbeddingModelHuggingFace.MINI_LM.value
+        embedding_model_hugging_face: EmbeddingModelHuggingFace = EmbeddingModelHuggingFace.MINI_LM
 
         # Batch operations
         batch_size: int = 1000
@@ -100,8 +100,8 @@ class RAGConfig:
 
     @dataclass
     class LLM:
-        llm_model: str = LLMModel.GEMINI_FLASH.value
-        llm_provider: str = LLMModelProvider.GOOGLE.value
+        llm_model: LLMModel = LLMModel.GEMINI_FLASH
+        llm_provider: LLMModelProvider = LLMModelProvider.GOOGLE
 
         # LLM Hyperparams 
         temperature: float = 0.1
