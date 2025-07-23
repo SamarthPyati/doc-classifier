@@ -22,12 +22,14 @@ class QueryResult:
     sources: List[str]  = field(default_factory=list)
     confidence: float   = 0.0
     num_sources: int    = 0
+    generation_time: float = 0.0
 
     def __repr__(self):
         return (f"Response: {self.response}\n"
                 f"Sources: {self.sources}\n"
                 f"Confidence: {self.confidence:.3f}\n"
-                f"Number of sources: {self.num_sources}")
+                f"Number of sources: {self.num_sources}\n"
+                f"Generation time: {self.generation_time:.3f} second(s)\n")
 
 class RAGSystem: 
     """ Main RAG System orchestrator """
@@ -161,7 +163,9 @@ class RAGSystem:
             if not self.llm:
                 if not self._initialize_llm():
                     return QueryResult(response="LLM not available. Please check LLM Service.")
-                
+            
+            start: float = time.perf_counter()
+
             # Perform similarity search
             results = self.vector_store_manager.similarity_search(question, self.db)
             
@@ -188,12 +192,13 @@ class RAGSystem:
             
             # Calculate average confidence
             avg_confidence = sum(score for _, score in results) / len(results)
-            
+
             return QueryResult(
                 response = response,
                 sources = sources,
                 confidence = avg_confidence,
-                num_sources = len(sources)
+                num_sources = len(sources), 
+                generation_time= time.perf_counter() - start
             )
 
         except Exception as e:
