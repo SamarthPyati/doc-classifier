@@ -15,7 +15,7 @@ stdout_handler.setFormatter(logging.Formatter("%(filename)s:%(lineno)d:%(funcNam
 stdout_handler.setLevel(logging.INFO)
 
 logging.basicConfig(
-    format="[%(asctime)s] %(filename)s:%(lineno)d:%(funcName)s - %(levelname)s - %(message)s", 
+    format="[%(asctime)s] %(module)s - %(levelname)s - %(message)s", 
     datefmt="%d-%m-%Y %H:%M:%S", 
     handlers=[file_handler, stdout_handler],
     level=logging.INFO
@@ -25,9 +25,13 @@ logger = logging.getLogger(__name__)
 
 
 class LLMModel(Enum):
+    # Ollama models (run locally)
     GEMMA = "gemma3:4b"
     LLAMA = "llama3.2:3b"
 
+    # Google gemini models 
+    GEMINI_FLASH = "gemini-2.5-flash"
+    GEMINI_PRO = "gemini-2.5-pro"
 
 class EmbeddingProvider(Enum):
     HUGGINGFACE = "HuggingFace"
@@ -42,7 +46,7 @@ class EmbeddingModelHuggingFace(Enum):
 class RAGConfig: 
     """ Configuration for RAG """
     corpus_path: str = "corpus"
-    llm_model: str = LLMModel.LLAMA.value
+    llm_model: str = LLMModel.GEMINI_FLASH.value
     
     @dataclass
     class DocProcessor: 

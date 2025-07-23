@@ -82,5 +82,5 @@ if __name__ == "__main__":
     main()
 
 
-# TODO: System is painfully slow, diagnose the reasons and fix it
-# TODO: Enable multiprocessing and mulithreading
+# TODO: Indexing is painfully slow, diagnose the problem and fix it. 
+# TODO: Enable multiprocessing and mulithreading.

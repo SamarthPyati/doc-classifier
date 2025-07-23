@@ -1,9 +1,10 @@
 from langchain_ollama import OllamaLLM
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from document import DocumentProcessor
 from database import VectorStoreManager
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG
+from config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 
 import time
 from typing import List
@@ -64,28 +65,45 @@ class RAGSystem:
         Answer:"""
         )
 
-    def _initialize_llm(self) -> bool: 
-        """ Initializing LLM """
-        try: 
-            self.llm = OllamaLLM(
-                model=self.config.llm_model,
-                num_thread=self.config.LLM.num_threads,
-                temperature=self.config.LLM.temperature, 
-                num_ctx=self.config.LLM.ctx_window_size, 
-                top_p=self.config.LLM.top_p,
-                verbose=False
-            )
-            
-            # Test the LLM connection
-            self.llm.invoke("Hello")
+    def _initialize_llm(self) -> bool:
+        """Initialize the LLM based on configuration."""
+        try:
+            model_name = self.config.llm_model
 
-            logger.info(f"LLM initialized successfully with model: {self.config.llm_model}")
+            if model_name.strip().startswith("gemini"):
+                self.llm = ChatGoogleGenerativeAI(
+                    model=model_name
+                )
+
+            elif model_name.startswith("llama") or model_name.startswith("gemma"):
+                try: 
+                    self.llm = OllamaLLM(
+                        model=model_name,
+                        num_thread=self.config.LLM.num_threads,
+                        temperature=self.config.LLM.temperature,
+                        num_ctx=self.config.LLM.ctx_window_size,
+                        top_p=self.config.LLM.top_p,
+                        verbose=False
+                    )
+                except Exception as e:
+                    logger.error(f"Ensure that Ollama is running and the model is pulled. Error: {e}")
+                    return False
+            else:
+                logger.warning(f"Invalid LLM model '{model_name}'. Choose from: {', '.join(LLMModel._member_names_)}")
+                return False
+
+            # Test the LLM connection
+            test_response = self.llm.invoke("Hello")
+            if not test_response:
+                raise ValueError("Empty response from LLM on test prompt.")
+
+            logger.info(f"LLM initialized successfully with model: {model_name}")
             return True
-            
-        except Exception as e: 
+
+        except Exception as e:
             logger.error(f"Error initializing LLM: {e}")
-            logger.error("Make sure Ollama is running and the model is available")
             return False
+
 
     # TODO: Automatically detect new document upload and rebuild the knowledge base
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
@@ -129,7 +147,7 @@ class RAGSystem:
         try:    
             if not self.llm:
                 if not self._initialize_llm():
-                    return QueryResult(response="LLM not available. Please check Ollama service.")
+                    return QueryResult(response="LLM not available. Please check LLM Service.")
             
             if not self.db: 
                 self.db = self.vector_store_manager.load_vector_store()
@@ -150,7 +168,7 @@ class RAGSystem:
             
             try:
                 if hasattr(self.llm, 'invoke'):
-                    response = self.llm.invoke(prompt)
+                    response = self.llm.invoke(prompt).content
                 else:
                     response = self.llm.predict(prompt)
             except Exception as e:
