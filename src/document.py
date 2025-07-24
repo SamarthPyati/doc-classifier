@@ -9,7 +9,7 @@ import hashlib
 from pathlib import Path
 from typing import List, Union, Iterator
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG
+from .config import RAGConfig, DEFAULT_RAG_CONFIG
 
 import logging
 logger = logging.getLogger(__name__)

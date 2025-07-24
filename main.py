@@ -1,8 +1,7 @@
 import logging
 from argparse import ArgumentParser
 
-from config import RAGConfig
-from system import RAGSystem
+from src import RAGConfig, RAGSystem
 
 import sys
 import warnings

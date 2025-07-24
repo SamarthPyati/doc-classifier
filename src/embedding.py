@@ -1,7 +1,7 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-from config import DEFAULT_RAG_CONFIG, RAGConfig, EmbeddingProvider
+from .config import DEFAULT_RAG_CONFIG, RAGConfig, EmbeddingProvider
 
 import logging
 logger = logging.getLogger(__name__)

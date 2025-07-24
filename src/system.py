@@ -4,10 +4,10 @@ from langchain.chat_models import init_chat_model
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
-from document import DocumentProcessor
-from database import VectorStoreManager
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
+from .document import DocumentProcessor
+from .database import VectorStoreManager
+from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 
 import time
 from typing import List

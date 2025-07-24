@@ -3,8 +3,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from chromadb.config import Settings
 
-from config import RAGConfig, DEFAULT_RAG_CONFIG
-from embedding import Embeddings
+from .config import RAGConfig, DEFAULT_RAG_CONFIG
+from .embedding import Embeddings
 
 import os
 import shutil
