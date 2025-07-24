@@ -1,5 +1,7 @@
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_experimental.text_splitter import SemanticChunker
+
 from langchain_community.document_loaders import (
     PyMuPDFLoader, 
     UnstructuredFileLoader, 
@@ -10,6 +12,7 @@ from pathlib import Path
 from typing import List, Union, Iterator
 
 from .config import RAGConfig, DEFAULT_RAG_CONFIG
+from .embedding import Embeddings
 
 import logging
 logger = logging.getLogger(__name__)
@@ -17,14 +20,25 @@ logger = logging.getLogger(__name__)
 class DocumentProcessor: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG) -> None:
         self.config = config
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.config.DocProcessor.chunk_size, 
-            chunk_overlap=self.config.DocProcessor.chunk_overlap, 
-            separators=['\n\n', '\n', '', ' '], 
-            add_start_index=True,   # For getting offset of file at split
-            length_function=len,
-            is_separator_regex=False,
-        )
+        self.embeddings = Embeddings(config)
+
+        if self.config.DocProcessor.use_semantic_chunking:
+            self.text_splitter = SemanticChunker(
+                embeddings=self.embeddings.get_embedding_model(),
+                add_start_index=True, 
+                breakpoint_threshold_type="standard_deviation", 
+                min_chunk_size=self.config.DocProcessor.chunk_size, 
+            )
+        else: 
+            self.text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.config.DocProcessor.chunk_size, 
+                chunk_overlap=self.config.DocProcessor.chunk_overlap, 
+                separators=['\n\n', '\n', '', ' '], 
+                add_start_index=True,   # For getting offset of file at split
+                length_function=len,
+                is_separator_regex=False,
+            )
+
         self.processed_files: set = set()
 
     def _get_document_hash(self, document: Document) -> str: 

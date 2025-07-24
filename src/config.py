@@ -39,6 +39,7 @@ class LLMModelProvider(Enum):
 class EmbeddingProvider(Enum):
     HUGGINGFACE = "HuggingFace"
     GOOGLE = "Google-Gemini"
+    OPENAI = "Openai"
 
 class EmbeddingModelHuggingFace(Enum):
     MINI_LM = "all-MiniLM-L6-v2"            # Embedding length - 364
@@ -52,6 +53,9 @@ class RAGConfig:
     
     @dataclass
     class DocProcessor: 
+        # Takes long time 
+        use_semantic_chunking: bool = False
+
         # Chunk size to split the document in (Makes the model get precise context to answer better)
         chunk_size: int = 1000
         

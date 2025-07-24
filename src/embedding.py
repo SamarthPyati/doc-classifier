@@ -1,5 +1,6 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 from .config import DEFAULT_RAG_CONFIG, RAGConfig, EmbeddingProvider
 
@@ -32,12 +33,23 @@ class Embeddings:
             logger.error(f"Error initializing Google Generative AI embedding model: {e}")
             raise
 
+    def _get_openai_model(self) -> OpenAIEmbeddings:
+        try:
+            return OpenAIEmbeddings(
+                model="text-embedding-3-small"
+            )
+        except Exception as e:
+            logger.error(f"Error initializing Google Generative AI embedding model: {e}")
+            raise
+
     def get_embedding_model(self):
         match self.embedding_provider:
             case EmbeddingProvider.HUGGINGFACE:
                 return self._get_huggingface_model()
             case EmbeddingProvider.GOOGLE:
                 return self._get_gemini_model()
+            case EmbeddingProvider.OPENAI: 
+                return self._get_openai_model()
             case _:
                 logger.warning("Invalid embedding provider selected. Choose from: %s",
                                ', '.join(EmbeddingProvider._member_names_))

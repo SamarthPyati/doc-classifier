@@ -1,14 +1,15 @@
 import sys
 import warnings
+import logging
+
+from src import RAGConfig, RAGSystem
+from parser import parser
+
+logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore', category=Warning, module='unstructured')
 warnings.filterwarnings('ignore', category=UserWarning, module='resource_tracker')      # TODO: Understand and fix semaphore leaks
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-import logging
-logger = logging.getLogger(__name__)
-
-from src import RAGConfig, RAGSystem
-from parser import parser
 
 ENABLE_PARSER: bool = True
 

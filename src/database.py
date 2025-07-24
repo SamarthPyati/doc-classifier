@@ -1,5 +1,4 @@
 from langchain.schema import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from chromadb.config import Settings
 
