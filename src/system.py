@@ -44,12 +44,10 @@ class RAGSystem:
         self.db = self.vector_store_manager.load_vector_store()
         
         # LLM Initialization
-        self.llm = None
-        self._initialize_llm()
+        self.llm = self._initialize_llm()
 
         # RAG Chain initialization 
-        self.chain = None
-        self._initialize_rag_chain()
+        self.chain = self._initialize_rag_chain()
 
     def _get_prompt_template(self) -> PromptTemplate: 
         return PromptTemplate(
@@ -70,21 +68,20 @@ class RAGSystem:
         Answer:"""
         )
 
-    def _initialize_llm(self) -> bool:
+    def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """Initialize the LLM based on configuration."""
         try:
             model_name = self.config.LLM.llm_model.value
-
+            
             if model_name.strip().startswith("gemini"):
-                self.llm = ChatGoogleGenerativeAI(
+                llm = ChatGoogleGenerativeAI(
                     model=model_name, 
                     temperature=self.config.LLM.temperature,
                     top_p=self.config.LLM.top_p,
                 )
-
             elif model_name.startswith("llama") or model_name.startswith("gemma"):
                 try: 
-                    self.llm = OllamaLLM(
+                    llm = OllamaLLM(
                         model=model_name,
                         num_thread=self.config.LLM.num_threads,
                         temperature=self.config.LLM.temperature,
@@ -94,27 +91,29 @@ class RAGSystem:
                     )
                 except Exception as e:
                     logger.error(f"Ensure that Ollama is running and the model is pulled. Error: {e}")
-                    return False
+                    return None
             else:
                 logger.warning(f"Invalid LLM model '{model_name}'. Choose from: {', '.join(LLMModel._member_names_)}")
-                return False
+                return None
 
             # Test the LLM connection
-            test_response = self.llm.invoke("Hello")
+            test_response = llm.invoke("Hello")
             if not test_response:
                 raise ValueError("Empty response from LLM on test prompt.")
+                return None
 
             logger.info(f"LLM initialized successfully with model: {model_name}")
-            return True
+            return llm 
 
         except Exception as e:
             logger.error(f"Error initializing LLM: {e}")
-            return False
+            return None
 
     def _initialize_rag_chain(self):
         # Set up RAG chain with LCEL (https://python.langchain.com/docs/concepts/lcel/) sequences  
         try: 
-            self.chain = self.prompt_template | self.llm | StrOutputParser()
+            chain = self.prompt_template | self.llm | StrOutputParser()
+            return chain
         except Exception as e:
             logger.error(f"Error initializing RAG Chain: {e}", exc_info=True)
             raise
@@ -158,10 +157,6 @@ class RAGSystem:
     def query(self, question: str) -> QueryResult:
         """ Query the RAG system with a question """
         try:    
-            if not self.llm:
-                if not self._initialize_llm():
-                    return QueryResult(response="LLM not available. Please check LLM Service.")
-            
             start: float = time.perf_counter()
 
             # Perform similarity search

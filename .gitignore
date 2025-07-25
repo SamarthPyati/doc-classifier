@@ -4,6 +4,8 @@ corpus/
 .env
 .DS_Store
 
+src/system_upgraded.py
+
 *.log
 
 *.ipynb
