@@ -15,20 +15,20 @@ from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 
 import time
 import uuid
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 
 import logging
 logger = logging.getLogger(__name__)
 
 @dataclass 
-class QueryResult:
+class Result:
     response: str       = "Null"
     sources: List[str]  = field(default_factory=list)
     confidence: float   = 0.0
     num_sources: int    = 0
-    generation_time: float = 0.0
-    session_id: str = "Null"
+    processing_time: float = 0.0
+    session_id: str = None
 
     def __repr__(self):
         return (f"Response: {self.response}\n"
@@ -58,12 +58,16 @@ class SessionStore:
         if not session_id in self.store: 
             self.store[session_id] = InMemoryChatMessageHistory()
         return self.store[session_id]
+    
+    def new_session(self, session_id: str) -> str: 
+        self.store[session_id] = InMemoryChatMessageHistory()
+        return session_id
 
     def clear_session(self, session_id: str): 
         if session_id in self.store: 
             self.store[session_id].clear()
     
-    def list_session(self) -> List[str]: 
+    def list_sessions(self) -> List[str]: 
         return list(self.store.keys())
     
 class RAGSystem: 
@@ -76,13 +80,17 @@ class RAGSystem:
 
         # Make a uuid for current chat session
         self.current_session_id = str(uuid.uuid4())
+        self.session_store = SessionStore()
 
         # Load vector store and initialize llm 
         self.db = self.vector_store_manager.load_vector_store()
         self.llm = self._initialize_llm()
+
         
         # Build LCEL chains
         self.query_chain = self._build_query_chain()
+        self.chat_chain = self._build_chat_chain()
+        self.conversational_chain = self._build_conversational_chain()
 
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """ Initialize the LLM based on configuration """
@@ -228,7 +236,7 @@ class RAGSystem:
     # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
     # Optimal approach would be to query the entire corpus once and store that context into the conversation (Make a conversation 
     # class) and use that to answer the follow up questions. 
-    def query(self, question: str) -> QueryResult:
+    def query(self, question: str) -> Result:
         """ Query the RAG system with a question """
         try:    
             start: float = time.perf_counter()
@@ -243,19 +251,165 @@ class RAGSystem:
 
             except Exception as e:
                 logger.error(f"LLM invocation failed: {e}. If using OLLAMA check if the server is started.")
-                return QueryResult(
+                return Result(
                     response="Sorry, I encountered an error while generating the response. Please try again."
                 )
 
-            return QueryResult(
+            return Result(
                 response = response,
                 session_id=self.current_session_id,
                 sources = context.sources,
                 confidence = context.confidence,
                 num_sources = len(context.sources), 
-                generation_time= time.perf_counter() - start
+                processing_time = time.perf_counter() - start
             )
 
         except Exception as e:
             logger.error(f"Error querying RAG system: {e}")
-            return QueryResult(response=f"Error processing query: {e}")
+            return Result(response=f"Error processing query: {e}")
+
+    def _build_chat_chain(self):
+        """Build LCEL chain for chat with conversation history"""
+        
+        chat_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert AI assistant engaged in a conversation. Use the provided context and conversation history to give accurate, helpful responses.
+
+            Context Information:
+            {context}
+
+            Instructions:
+            - Use the context and conversation history to provide relevant answers
+            - Be conversational and natural while staying accurate
+            - Reference previous parts of the conversation when relevant
+            - If the question relates to earlier topics, acknowledge that connection
+            - If context is insufficient for a complete answer, ask clarifying questions
+            - Maintain consistency with previous responses
+            - Always cite sources when providing specific information"""),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{question}")
+        ])
+        
+        # Build the chain with context retrieval
+        def prepare_chat_input(inputs):
+            question = inputs["question"]
+            history = inputs.get("history", [])
+            
+            # Retrieve context based on current question
+            rag_context = self._retrieve_context(question)
+            formatted_context = self._format_context(rag_context)
+            
+            return {
+                "context": formatted_context,
+                "question": question,
+                "history": history,
+                "rag_context": rag_context  # Pass for metadata
+            }
+        
+        chain = (
+            RunnableLambda(prepare_chat_input)
+            | RunnableParallel({
+                "response": chat_prompt | self.llm | StrOutputParser(),
+                "rag_context": RunnableLambda(lambda x: x["rag_context"])
+            })
+        )
+        
+        return chain
+
+    def _build_conversational_chain(self):
+        """Build conversational chain with message history management"""
+        
+        # Wrap the chat chain with message history
+        conversational_chain = RunnableWithMessageHistory(
+            self.chat_chain,
+            self.session_store.get_session_history,
+            input_messages_key="question",
+            history_messages_key="history",
+        )
+        
+        return conversational_chain
+
+    def chat(self, message: str, session_id: Optional[str] = None) -> Result:
+        """Process a chat message with conversation history"""
+        try:
+            if session_id is None:
+                session_id = self.current_session_id
+            
+            start_time = time.time()
+            
+            # Configure the runnable with session
+            config = {"configurable": {"session_id": session_id}}
+            
+            # Run the conversational chain
+            result = self.conversational_chain.invoke(
+                {"question": message},
+                config=config
+            )
+            
+            processing_time = time.time() - start_time
+            
+            return Result(
+                response = result["response"],
+                sources = result["rag_context"].sources,
+                confidence = result["rag_context"].confidence,
+                num_sources = len(result["rag_context"].sources),
+                processing_time = processing_time,
+                session_id = session_id
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing chat message: {e}")
+            return Result(response=f"Error processing message: {str(e)}")
+
+    def stream_chat(self, message: str, session_id: Optional[str] = None):
+        """Stream chat response for real-time interaction"""
+        if session_id is None:
+            session_id = self.current_session_id
+        
+        config = {"configurable": {"session_id": session_id}}
+        
+        try:
+            for chunk in self.conversational_chain.stream(
+                {"question": message}, 
+                config=config
+            ):
+                if "response" in chunk:
+                    yield chunk["response"]
+        except Exception as e:
+            logger.error(f"Error streaming chat: {e}")
+            yield f"Error: {str(e)}"
+
+    def get_chat_history(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get chat history for a session"""
+        if session_id is None:
+            session_id = self.current_session_id
+        
+        history = self.session_store.get_session_history(session_id)
+        
+        formatted_history = []
+        for message in history.messages:
+            formatted_history.append({
+                "role": "human" if isinstance(message, HumanMessage) else "assistant",
+                "content": message.content,
+                "timestamp": getattr(message, 'timestamp', None)
+            })
+        
+        return formatted_history
+
+    def clear_chat_history(self, session_id: Optional[str] = None):
+        """Clear chat history for a session"""
+        if session_id is None:
+            session_id = self.current_session_id
+        
+        self.session_store.clear_session(session_id)
+        logger.info(f"Cleared chat history for session: {session_id}")
+
+    def create_new_session(self) -> str:
+        """Create a new chat session"""
+        new_session_id = str(uuid.uuid4())
+        self.current_session_id = self.session_store.new_session(new_session_id)
+        logger.info(f"Created new chat session: {new_session_id}")
+        return new_session_id
+
+    def list_sessions(self) -> List[str]:
+        """List all active sessions"""
+        return self.session_store.list_sessions()
