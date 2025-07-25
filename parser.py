@@ -1,6 +1,5 @@
 from src import RAGConfig
 from argparse import ArgumentParser
-from src import RAGSystem
 
 def parser(config: RAGConfig):
     parser = ArgumentParser(

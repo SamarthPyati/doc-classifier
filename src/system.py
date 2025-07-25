@@ -1,12 +1,11 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser
-from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.schema import Document
 
 from .document import DocumentProcessor
@@ -55,7 +54,7 @@ class SessionStore:
         self.store: Dict[str, BaseChatMessageHistory] = {}
     
     def get_session_history(self, session_id: str) -> BaseChatMessageHistory: 
-        if not session_id in self.store: 
+        if session_id not in self.store: 
             self.store[session_id] = InMemoryChatMessageHistory()
         return self.store[session_id]
     
@@ -232,10 +231,6 @@ class RAGSystem:
             logger.error(f"Error building knowledge Base: {e}")
             return False
     
-    # IDEATE: How will this query system work?
-    # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
-    # Optimal approach would be to query the entire corpus once and store that context into the conversation (Make a conversation 
-    # class) and use that to answer the follow up questions. 
     def query(self, question: str) -> Result:
         """ Query the RAG system with a question """
         try:    
@@ -328,6 +323,10 @@ class RAGSystem:
         
         return conversational_chain
 
+    # IDEATE: How will this chat system work?
+    # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
+    # Optimal approach would be to chat query the entire corpus once and store that context into the conversation (Make a conversation 
+    # class) and use that to answer the follow up questions. 
     def chat(self, message: str, session_id: Optional[str] = None) -> Result:
         """Process a chat message with conversation history"""
         try:
