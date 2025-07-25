@@ -1,14 +1,21 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain.schema import Document
 
 from .document import DocumentProcessor
 from .database import VectorStoreManager
 from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 
 import time
-from typing import List
+import uuid
+from typing import List, Dict
 from dataclasses import dataclass, field
 
 import logging
@@ -16,19 +23,49 @@ logger = logging.getLogger(__name__)
 
 @dataclass 
 class QueryResult:
-    response: str       = "No answer generated"
+    response: str       = "Null"
     sources: List[str]  = field(default_factory=list)
     confidence: float   = 0.0
     num_sources: int    = 0
     generation_time: float = 0.0
+    session_id: str = "Null"
 
     def __repr__(self):
         return (f"Response: {self.response}\n"
+                f"Session ID: {self.session_id}\n"
                 f"Sources: {self.sources}\n"
                 f"Confidence: {self.confidence:.3f}\n"
                 f"Number of sources: {self.num_sources}\n"
                 f"Generation time: {self.generation_time:.3f} second(s)\n")
 
+@dataclass 
+class RAGContext: 
+    """Data class to hold RAG context and sources"""
+    documents: List[Document] = field(default_factory=list)
+    sources: List[str] = field(default_factory=list)
+    confidence: float = 0.0
+    query: str = ""
+
+
+# TODO: Also autogenerate chat history and store in session store 
+# TODO: Store the session store in database instead of in memory
+class SessionStore: 
+    """In-memory session store for chat histories"""
+    def __init__(self): 
+        self.store: Dict[str, BaseChatMessageHistory] = {}
+    
+    def get_session_history(self, session_id: str) -> BaseChatMessageHistory: 
+        if not session_id in self.store: 
+            self.store[session_id] = InMemoryChatMessageHistory()
+        return self.store[session_id]
+
+    def clear_session(self, session_id: str): 
+        if session_id in self.store: 
+            self.store[session_id].clear()
+    
+    def list_session(self) -> List[str]: 
+        return list(self.store.keys())
+    
 class RAGSystem: 
     """ Main RAG System orchestrator """
     # TODO: Implement chat feature 
@@ -37,39 +74,18 @@ class RAGSystem:
         self.document_processor = DocumentProcessor(config)
         self.vector_store_manager = VectorStoreManager(config)
 
-        # Make prompt template
-        self.prompt_template = self._get_prompt_template()
+        # Make a uuid for current chat session
+        self.current_session_id = str(uuid.uuid4())
 
-        # Load vector store
+        # Load vector store and initialize llm 
         self.db = self.vector_store_manager.load_vector_store()
-        
-        # LLM Initialization
         self.llm = self._initialize_llm()
-
-        # RAG Chain initialization 
-        self.chain = self._initialize_rag_chain()
-
-    def _get_prompt_template(self) -> PromptTemplate: 
-        return PromptTemplate(
-            input_variables=["context", "question"],
-            template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
-        Context Information:
-        {context}
         
-        Question: {question}
-        
-        Instructions:
-        - Answer using ONLY the provided context
-        - Be comprehensive yet concise
-        - If context is insufficient, state this clearly, do not make up any answers by yourself
-        - Cite specific sources when mentioning details
-        - Provide structured, actionable information when possible
-        
-        Answer:"""
-        )
+        # Build LCEL chains
+        self.query_chain = self._build_query_chain()
 
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
-        """Initialize the LLM based on configuration."""
+        """ Initialize the LLM based on configuration """
         try:
             model_name = self.config.LLM.llm_model.value
             
@@ -109,14 +125,72 @@ class RAGSystem:
             logger.error(f"Error initializing LLM: {e}")
             return None
 
-    def _initialize_rag_chain(self):
-        # Set up RAG chain with LCEL (https://python.langchain.com/docs/concepts/lcel/) sequences  
-        try: 
-            chain = self.prompt_template | self.llm | StrOutputParser()
-            return chain
+    def _retrieve_context(self, query: str) -> RAGContext:
+        """ Retrieve relevant documents using vector search """
+        try:
+            if not self.db:
+                self.db = self.vector_store_manager.load_vector_store()
+            
+            results = self.vector_store_manager.similarity_search(query, self.db)
+            
+            if not results:
+                return RAGContext(query=query)
+            
+            documents = [doc for doc, _score in results]
+            sources = list(set([doc.metadata.get("source", "Unknown") for doc in documents]))
+            confidence = sum(score for _, score in results) / len(results)
+            
+            return RAGContext(
+                documents=documents,
+                sources=sources,
+                confidence=confidence,
+                query=query
+            )
         except Exception as e:
-            logger.error(f"Error initializing RAG Chain: {e}", exc_info=True)
-            raise
+            logger.error(f"Error retrieving documents: {e}")
+            return RAGContext(query=query)
+
+    def _format_context(self, context: RAGContext) -> str:
+        """ Format retrieved documents into context string """
+        if not context.documents:
+            return "No relevant documents found."
+        
+        formatted_docs = []
+        for i, doc in enumerate(context.documents, 1):
+            source = doc.metadata.get("source", "Unknown")
+            formatted_docs.append(f"Document {i} -> (Source: {source}):\n{doc.page_content}")
+        
+        return ("\n\n" + "=" * 70 + "\n\n").join(formatted_docs)
+
+    def _build_query_chain(self):
+        """Build LCEL chain for single queries without conversation history"""
+
+        query_prompt = PromptTemplate(
+            input_variables=["context", "question"],
+            template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
+        Context Information:
+        {context}
+        
+        Question: {question}
+        
+        Instructions:
+        - Answer using ONLY the provided context
+        - Be comprehensive yet concise
+        - If context is insufficient, state this clearly, do not make up any answers by yourself
+        - Cite specific sources when mentioning details
+        - Provide structured, actionable information when possible
+        
+        Answer:"""
+        )
+        
+        chain = (
+            RunnablePassthrough()
+            | query_prompt 
+            | self.llm 
+            | StrOutputParser()
+        )
+        
+        return chain
 
     # TODO: Automatically detect new document upload and rebuild the knowledge base
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
@@ -158,39 +232,27 @@ class RAGSystem:
         """ Query the RAG system with a question """
         try:    
             start: float = time.perf_counter()
+            
+            context: RAGContext = self._retrieve_context(question)
 
-            # Perform similarity search
-            results = self.vector_store_manager.similarity_search(question, self.db)
-            
-            if not results:
-                return QueryResult(response="No relevant documents found")
-            
-            # Prepare context
-            context = "\n\n======================================================================\n\n".join([
-                doc.page_content for doc, _score in results
-            ])
-            
             try:
-                response = self.chain.invoke({'context': context, 'question': question})
+                response = self.query_chain.invoke({
+                    'question': question, 
+                    'context': self._format_context(context)
+                })
+
             except Exception as e:
                 logger.error(f"LLM invocation failed: {e}. If using OLLAMA check if the server is started.")
                 return QueryResult(
                     response="Sorry, I encountered an error while generating the response. Please try again."
                 )
-            
-            # Extract sources
-            sources = list(set([
-                doc.metadata.get("source", "Unknown") for doc, _score in results
-            ]))
-            
-            # Calculate average confidence
-            avg_confidence = sum(score for _, score in results) / len(results)
 
             return QueryResult(
                 response = response,
-                sources = sources,
-                confidence = avg_confidence,
-                num_sources = len(sources), 
+                session_id=self.current_session_id,
+                sources = context.sources,
+                confidence = context.confidence,
+                num_sources = len(context.sources), 
                 generation_time= time.perf_counter() - start
             )
 
