@@ -73,22 +73,26 @@ class RAGConfig:
         lazy_loading: bool = True
     
     @dataclass
-    class Database: 
-        # Chroma db path to store locally
-        database_path: str = "chroma_db"
-        
-        collection_name: str = "rag_documents"
-        
+    class Embedding: 
         # Select the embedding provider from Hugginface or Google  
         embedding_provider: EmbeddingProvider = EmbeddingProvider.GOOGLE
 
         # HuggingFace Embedding models (set embedding_provider to HUGGINGFACE) 
         # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
-        embedding_model_hugging_face: EmbeddingModelHuggingFace = EmbeddingModelHuggingFace.MINI_LM
+        embedding_model_huggingface: EmbeddingModelHuggingFace = EmbeddingModelHuggingFace.MINI_LM
+        embedding_model_google: str = "models/embedding-001"
+        embedding_model_openai: str = "text-embedding-3-small"
+        normalize_embeddings: bool = True
 
         # Batch operations
         batch_size: int = 1000
-        normalize_embeddings: bool = True
+
+    @dataclass
+    class Database: 
+        # Chroma db path to store locally
+        database_path: str = "chroma_db"
+        
+        collection_name: str = "rag_documents"
         
         # Max results to return after similarity search 
         max_results: int = 10

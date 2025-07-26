@@ -4,43 +4,48 @@ from langchain_openai import OpenAIEmbeddings
 
 from .config import DEFAULT_RAG_CONFIG, RAGConfig, EmbeddingProvider
 
+import functools
 import logging
 logger = logging.getLogger(__name__)
+
+def handle_embedding_errors(func): 
+    """ Wrapper to handle the errors while initializing the embedding model """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs): 
+        try: 
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error initializing embedding model in {func.__name__}: {e}")
+            return None
+    return wrapper
 
 class Embeddings:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):
         self.config = config
-        self.embedding_provider = self.config.Database.embedding_provider
-        self.embedding_model = self.config.Database.embedding_model_hugging_face.value
+        self.embedding_provider = self.config.Embedding.embedding_provider
+        self.embedding_model_huggingface = self.config.Embedding.embedding_model_huggingface.value
+        self.embedding_model_google = self.config.Embedding.embedding_model_google
+        self.embedding_model_openai = self.config.Embedding.embedding_model_openai
 
+    @handle_embedding_errors
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:
-        try:
-            return HuggingFaceEmbeddings(
-                model_name=self.embedding_model,
-                model_kwargs={'device': device},
-                encode_kwargs={'normalize_embeddings': normalize_embeddings}
-            )
-        except Exception as e:
-            logger.error(f"Error initializing HuggingFace embedding model: {e}")
-            raise
+        return HuggingFaceEmbeddings(
+            model_name=self.embedding_model_huggingface,
+            model_kwargs={'device': device},
+            encode_kwargs={'normalize_embeddings': normalize_embeddings}
+        )
 
+    @handle_embedding_errors
     def _get_gemini_model(self) -> GoogleGenerativeAIEmbeddings:
-        try:
-            return GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001"
-            )
-        except Exception as e:
-            logger.error(f"Error initializing Google Generative AI embedding model: {e}")
-            raise
+        return GoogleGenerativeAIEmbeddings(
+            model=self.embedding_model_google
+        )
 
+    @handle_embedding_errors
     def _get_openai_model(self) -> OpenAIEmbeddings:
-        try:
-            return OpenAIEmbeddings(
-                model="text-embedding-3-small"
-            )
-        except Exception as e:
-            logger.error(f"Error initializing Google Generative AI embedding model: {e}")
-            raise
+        return OpenAIEmbeddings(
+            model=self.embedding_model_openai
+        )
 
     def get_embedding_model(self):
         match self.embedding_provider:
