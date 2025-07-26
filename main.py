@@ -2,6 +2,7 @@ import sys
 import warnings
 import logging
 
+from src.config import setup_logging
 from src import RAGConfig, RAGSystem
 from parser import parser
 
@@ -14,6 +15,7 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 ENABLE_PARSER: bool = True
 
 def main(): 
+    setup_logging()
     config = RAGConfig()    
 
     try: 
@@ -38,7 +40,7 @@ def main():
                 if result.sources:
                     print(f"\n📚 Sources: {', '.join(result.sources)}")
                     print(f"🎯 Confidence: {result.confidence:.2f}")
-                    print(f"⚡ Time: {result.generation_time:.2f}s")
+                    print(f"⚡ Time: {result.processing_time:.2f}s")
 
             elif args.command == "chat":
                 interactive_chat(rag_system, args.session, args.stream)
@@ -106,7 +108,7 @@ def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_strea
             if user_input.startswith('/'):
                 command = user_input.lower()
                 
-                if command == '/quit':
+                if command == '/quit' or command == '/exit':
                     print("👋 Goodbye!")
                     break
                 elif command == '/help':

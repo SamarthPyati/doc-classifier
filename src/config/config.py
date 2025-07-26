@@ -1,28 +1,9 @@
-import logging
 import yaml
 import sys
 
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
-
-# Logger Config (file and stdout logger)
-file_handler = logging.FileHandler(filename='events.log', )
-file_handler.setLevel(logging.INFO)
-
-stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setFormatter(logging.Formatter("%(filename)s:%(lineno)d:%(funcName)s - %(levelname)s - %(message)s"))
-stdout_handler.setLevel(logging.INFO)
-
-logging.basicConfig(
-    format="[%(asctime)s] %(module)s - %(levelname)s - %(message)s", 
-    datefmt="%d-%m-%Y %H:%M:%S", 
-    handlers=[file_handler, stdout_handler],
-    level=logging.INFO
-)
-
-logger = logging.getLogger(__name__)
-
 
 class LLMModel(Enum):
     # Ollama models (run locally)
