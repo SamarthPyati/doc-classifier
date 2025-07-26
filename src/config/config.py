@@ -5,27 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
 
-class LLMModel(Enum):
-    # Ollama models (run locally)
-    GEMMA = "gemma3:4b"
-    LLAMA = "llama3.2:3b"
-
-    # Google gemini models 
-    GEMINI_FLASH = "gemini-2.5-flash"
-    GEMINI_PRO = "gemini-2.5-pro"
-
-class LLMModelProvider(Enum):
-    GOOGLE = "google_genai"
-
-class EmbeddingProvider(Enum):
-    HUGGINGFACE = "HuggingFace"
-    GOOGLE = "Google-Gemini"
-    OPENAI = "Openai"
-
-class EmbeddingModelHuggingFace(Enum):
-    MINI_LM = "all-MiniLM-L6-v2"            # Embedding length - 364
-    LABSE   = "LaBSE"                       # Embedding length - 728
-    ROBERTA = "all-roberta-large-v1"        # Embedding length - 1024
+from .constants import *
 
 @dataclass
 class RAGConfig: 
