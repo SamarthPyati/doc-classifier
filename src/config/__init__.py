@@ -10,7 +10,7 @@ from .constants import (
     EmbeddingModelHuggingFace
 )
 
-from .loggin_config import setup_logging
+from .logging_config import setup_logging
 
 __all__ = (
     "LLMModel", 
