@@ -1,98 +1,99 @@
-import yaml
-import sys
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Literal, Tuple
 
-from dataclasses import dataclass
-from enum import Enum
-from typing import Literal
+from .constants import (
+    EmbeddingProvider,
+    EmbeddingModelHuggingFace,
+    LLMModel,
+    LLMModelProvider
+)
 
-from .constants import *
+class DocProcessorSettings(BaseModel):
+    """ Settings for document processing and chunking """
+    # Takes long time
+    use_semantic_chunking: bool = False
 
-@dataclass
-class RAGConfig: 
-    """ Configuration for RAG """
+    # Chunk size to split the document in (Makes the model get precise context to answer better)
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
+    
+    # PDF specific settings
+    pdf_extract_images: bool = False
+    pdf_table_structure_infer_mode: Literal['csv', 'markdown', 'html', None] = 'csv'
+    
+    # TODO: Add more document types for support
+    supported_extensions: Tuple[str, ...] = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
+    
+    # Load documents lazily into a iterator
+    lazy_loading: bool = True
+
+class EmbeddingSettings(BaseModel):
+    """ Settings for text embedding models and providers """
+    provider: EmbeddingProvider = Field(default=EmbeddingProvider.GOOGLE, alias="embedding_provider")
+    normalize: bool = Field(default=True, alias="normalize_embeddings")
+    
+    batch_size: int = 1000
+
+    # Model names for different providers
+    huggingface_model: EmbeddingModelHuggingFace = Field(default=EmbeddingModelHuggingFace.MINI_LM, alias="embedding_model_huggingface")
+    google_model: str = Field(default="models/embedding-001", alias="embedding_model_google")
+    openai_model: str = Field(default="text-embedding-3-small", alias="embedding_model_openai")
+
+class DatabaseSettings(BaseModel):
+    """ Settings for the vector database """
+    # Chroma db path to store locally
+    path: str = Field(default="chroma_db", alias="database_path")
+    collection_name: str = "rag_documents"
+
+    # Max results to return after similarity search
+    max_results: int = 10
+
+    # NOTE: Set threshold to a lower value preferrably .2 or .3 if using a lightweight embedding model
+    # Min threshold to classify as related in similarity search
+    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+     
+    # TODO: Reranking
+    enable_reranking: bool = True
+    rerank_top_k: int = 20
+
+class LLMSettings(BaseModel):
+    """ Settings for the Large Language Model which responds to chat and query """
+    model: LLMModel = Field(default=LLMModel.GEMINI_FLASH, alias="llm_model")
+    provider: LLMModelProvider = Field(default=LLMModelProvider.GOOGLE, alias="llm_provider")
+
+    # LLM Hyperparams
+    temperature: float = Field(default=0.1, ge=0.0, le=2.0)
+    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
+
+    # Settings for local models via Ollama
+    ctx_window_size: int = 4096
+    num_threads: int = 4
+
+    # Performance settings
+    streaming: bool = True
+    batch_inference: bool = True
+    max_batch_size: int = 8
+
+class RAGConfig(BaseSettings):
+    """
+    Main configuration for the RAG system, loaded from environment variables or defaults.
+    """
+
+    # Configure Pydantic to load from a .env file, use a prefix, and handle nested structures.
+    model_config = SettingsConfigDict(
+        env_file='.env',
+        env_prefix='RAG_',
+        env_nested_delimiter='__',
+        case_sensitive=False,
+        extra='ignore'
+    )
+
     corpus_path: str = "corpus"
-    
-    @dataclass
-    class DocProcessor: 
-        # Takes long time 
-        use_semantic_chunking: bool = False
 
-        # Chunk size to split the document in (Makes the model get precise context to answer better)
-        chunk_size: int = 1000
-        
-        # Overlap token with adjacent chunks
-        chunk_overlap: int = 200
-
-        # PDF specific settings
-        pdf_extract_images: bool = False    # Performance
-        pdf_table_structure_infer_mode: Literal['csv', 'markdown', 'html', None] = 'csv'
-
-        # Supported file extensions
-        supported_extensions: tuple = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
-
-        # Load documents lazily into a iterator
-        lazy_loading: bool = True
-    
-    @dataclass
-    class Embedding: 
-        # Select the embedding provider from Hugginface or Google  
-        embedding_provider: EmbeddingProvider = EmbeddingProvider.GOOGLE
-
-        # HuggingFace Embedding models (set embedding_provider to HUGGINGFACE) 
-        # ["all-MiniLM-L6-v2" (384), "LaBSE" (768), "all-roberta-large-v1" (1024)]
-        embedding_model_huggingface: EmbeddingModelHuggingFace = EmbeddingModelHuggingFace.MINI_LM
-        embedding_model_google: str = "models/embedding-001"
-        embedding_model_openai: str = "text-embedding-3-small"
-        normalize_embeddings: bool = True
-
-        # Batch operations
-        batch_size: int = 1000
-
-    @dataclass
-    class Database: 
-        # Chroma db path to store locally
-        database_path: str = "chroma_db"
-        
-        collection_name: str = "rag_documents"
-        
-        # Max results to return after similarity search 
-        max_results: int = 10
-
-        # NOTE: Set threshold to a lower value preferrably .2 or .3 if using a lightweight embedding model 
-        # Min threshold to classify as related in similarity search
-        similarity_threshold: float = 0.7
-
-        # Reranking
-        enable_reranking: bool = True
-        rerank_top_k: int = 20
-
-
-    @dataclass
-    class LLM:
-        llm_model: LLMModel = LLMModel.GEMINI_FLASH
-        llm_provider: LLMModelProvider = LLMModelProvider.GOOGLE
-
-        # LLM Hyperparams 
-        temperature: float = 0.1
-        top_p: float = 0.9
-
-        # LLM Hyperparams (for local running models via ollama)
-        ctx_window_size: int = 4096
-        num_threads: int = 4
-
-        # Performance settings
-        streaming: bool = True
-        batch_inference: bool = True
-        max_batch_size: int = 8
-
-    @classmethod
-    def load_config_from_yaml(cls, file_path: str): 
-        """ Load configuration externally from a yaml file """
-        with open(file_path, 'r') as f: 
-            config = yaml.safe_load(f)
-        return cls(**config)
+    DocProcessor: DocProcessorSettings = DocProcessorSettings()
+    Embeddings: EmbeddingSettings = EmbeddingSettings()
+    Database: DatabaseSettings = DatabaseSettings()
+    LLM: LLMSettings = LLMSettings()
 
 DEFAULT_RAG_CONFIG: RAGConfig = RAGConfig()
-
-# TODO: Validation with Pydantic BaseSettings
-# TODO: Make separate classes for each config rather than monolithic approach

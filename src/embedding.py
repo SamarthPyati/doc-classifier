@@ -22,10 +22,10 @@ def handle_embedding_errors(func):
 class Embeddings:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):
         self.config = config
-        self.embedding_provider = self.config.Embedding.embedding_provider
-        self.embedding_model_huggingface = self.config.Embedding.embedding_model_huggingface.value
-        self.embedding_model_google = self.config.Embedding.embedding_model_google
-        self.embedding_model_openai = self.config.Embedding.embedding_model_openai
+        self.embedding_provider = self.config.Embeddings.provider
+        self.embedding_model_huggingface = self.config.Embeddings.huggingface_model.value
+        self.embedding_model_google = self.config.Embeddings.google_model
+        self.embedding_model_openai = self.config.Embeddings.openai_model
 
     @handle_embedding_errors
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:

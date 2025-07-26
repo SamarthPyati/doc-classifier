@@ -1,6 +1,5 @@
 import logging.config
 import os
-import sys
 
 def setup_logging():
     """

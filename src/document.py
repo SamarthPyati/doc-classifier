@@ -7,8 +7,6 @@ from langchain_community.document_loaders import (
     UnstructuredFileLoader, 
 )
 
-from langchain_unstructured import UnstructuredLoader
-
 import hashlib
 from pathlib import Path
 from typing import List, Union, Iterator

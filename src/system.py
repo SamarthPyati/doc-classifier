@@ -94,7 +94,7 @@ class RAGSystem:
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """ Initialize the LLM based on configuration """
         try:
-            model_name = self.config.LLM.llm_model.value
+            model_name = self.config.LLM.model.value
             
             if model_name.strip().startswith("gemini"):
                 llm = ChatGoogleGenerativeAI(

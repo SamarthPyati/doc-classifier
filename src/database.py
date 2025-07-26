@@ -19,7 +19,7 @@ load_dotenv()
 class VectorStoreManager: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.config = config 
-        self.database_path = os.path.abspath(self.config.Database.database_path)
+        self.database_path = os.path.abspath(self.config.Database.path)
         self.collection_name = self.config.Database.collection_name
         self.embedding_function = Embeddings(config).get_embedding_model()
     
