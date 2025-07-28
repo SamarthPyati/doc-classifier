@@ -117,7 +117,7 @@ class VectorStoreManager:
                 # If force_rebuild enabled just build everything from scratch
                 new_chunks = chunks
                 new_ids = [chunk.metadata["id"] for chunk in chunks]
-
+            
             if len(new_chunks):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")
                 self._db.add_documents(new_chunks, ids=new_ids)

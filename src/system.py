@@ -209,8 +209,8 @@ class RAGSystem:
             # Load and process documents
             documents = self.document_processor.load_documents(force_reload=force_rebuild)
             if not documents:
-                logger.error("No documents found to process")
-                return False
+                logger.info("No new documents found to process")
+                return True
             
             # Split documents into chunks
             chunks = self.document_processor.split_documents(documents)

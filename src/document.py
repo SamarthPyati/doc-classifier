@@ -7,9 +7,11 @@ from langchain_community.document_loaders import (
     UnstructuredFileLoader, 
 )
 
+import json
 import hashlib
 from pathlib import Path
-from typing import List, Union, Iterator
+from typing import List, Union, Iterator, Dict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from .config import RAGConfig, DEFAULT_RAG_CONFIG
 from .embedding import Embeddings
@@ -21,6 +23,7 @@ class DocumentProcessor:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG) -> None:
         self.config = config
         self.embeddings = Embeddings(config)
+        self.cache_path = Path(self.config.corpus_path) / '.cache.json'
 
         if self.config.DocProcessor.use_semantic_chunking:
             self.text_splitter = SemanticChunker(
@@ -38,17 +41,24 @@ class DocumentProcessor:
                 length_function=len,
                 is_separator_regex=False,
             )
-
-        self.processed_files: set = set()
-
-    def _get_document_hash(self, document: Document) -> str: 
-        """ Get the hash of a Document required for checking change in document content """
-        return hashlib.md5((document.page_content).encode()).hexdigest()
     
-    def _get_file_hash(self, file_path: str, size: int = 4096) -> str: 
-        """ Get the hash of first 'size' bytes of file content """
-        with open(file_path, 'rb') as f: 
-            return hashlib.md5(f.read(size)).hexdigest()
+    def _get_file_hash(self, file_path: Path) -> str:
+        """ OPTIMIZATION: Get the hash of file content by reading in chunks """
+        h = hashlib.md5()
+        with file_path.open("rb") as f:
+            while chunk := f.read(8192):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def load_cache(self) -> Dict[str, str]:
+        if self.cache_path.exists():
+            with self.cache_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+    def _save_cache(self, cache: Dict[str, str]) -> None:
+        with self.cache_path.open("w", encoding="utf-8") as f:
+            json.dump(cache, f, indent=2)
     
     def _load_pdf(self, file_path: str, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]:  
         """ Load a PDF file """
@@ -60,11 +70,9 @@ class DocumentProcessor:
                 )
             docs = loader.load() if not lazy_load else loader.lazy_load()
             
-            # Update file metadata 
-            file_hash = self._get_file_hash(file_path)
+            # Add filetype in metadata 
             for doc in docs: 
                 doc.metadata.update({
-                    "file_hash": file_hash, 
                     "file_type": "pdf"
                 })
             return docs
@@ -72,10 +80,10 @@ class DocumentProcessor:
             logger.error(f"Error in loading PDF file {file_path}: {e}")
             return []
 
-    def _load_document(self, file_path: str, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]:  
+    def _load_single_document(self, file_path: str, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]:  
         """ Load single document with appropriate loader """
-        file_ext = Path(file_path).suffix.lower()
         try: 
+            file_ext = Path(file_path).suffix.lower()
             match file_ext: 
                 case ".pdf":
                     return self._load_pdf(file_path, lazy_load=lazy_load) 
@@ -83,11 +91,9 @@ class DocumentProcessor:
                     loader = UnstructuredFileLoader(file_path=file_path, strategy="fast")
                     docs = loader.load() if not lazy_load else loader.lazy_load()
 
-                    # Add metadata
-                    file_hash = self._get_file_hash(file_path)
-                    for doc in docs:
+                    # Add filetype in metadata
+                    for doc in docs:    
                         doc.metadata.update({
-                            'file_hash': file_hash,
                             'file_type': file_ext[1:],  # Remove the dot from extension
                         })
                     return docs
@@ -100,40 +106,55 @@ class DocumentProcessor:
         """ Load documents from corpus """
         documents: List[Document] = []
         processed_count = 0
-        try:
-            corpus_path = Path(self.config.corpus_path)
-            if not corpus_path.exists(): 
-                raise FileNotFoundError(f"Corpus path {self.config.corpus_path} not found.")
-            
-            for file_path in corpus_path.rglob("*"): 
+        
+        cache = self.load_cache() if not force_reload else {}
+        new_cache = {}
+        
+        corpus_path = Path(self.config.corpus_path)
+        if not corpus_path.exists(): 
+            raise FileNotFoundError(f"Corpus path {self.config.corpus_path} not found.")
+        
+        files_to_process = list(corpus_path.rglob("*"))
+        
+        with ProcessPoolExecutor(max_workers=8) as executor: 
+            future_to_file = {}             # Future to File map to extract result 
+            for file_path in files_to_process: 
                 if not file_path.is_file(): 
                     continue
-                    
+                
                 if file_path.suffix.lower() not in self.config.DocProcessor.supported_extensions: 
                     logger.warning(f"Unsupported file format: {file_path.name}")
                     continue
 
-                # Check if file already processed (unless force reload)
-                file_key = f"{file_path}_{self._get_file_hash(str(file_path))}"
-                if not force_reload and file_key in self.processed_files:
-                    logger.info(f"Skipping already processed file: {file_path.name}")
-                    continue
+                file_id = str(file_path)
+                try: 
+                    current_hash = self._get_file_hash(file_path)
+                    new_cache[file_id] = current_hash
 
-                docs = list(self._load_document(str(file_path)))
-                if docs is not None: 
-                    documents.extend(docs)
+                    if not force_reload and cache.get(file_id) == current_hash:
+                        logger.info(f"Skipping cached and unchanged file: {file_path.name}")
+                        continue
+
+                    future = executor.submit(self._load_single_document, file_path)
+                    future_to_file[future] = file_path
+                except Exception as e:
+                    logger.error(f"Failed to submit {file_path.name} for processing: {e}")
+
+            for future in as_completed(list(future_to_file.keys())):
+                file_path = future_to_file.get(future, 'Unknown')
+                try:
+                    docs = future.result()
+                    documents.extend(list(docs))
+                    logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
                     processed_count += 1
-                    self.processed_files.add(file_key)
-                    logger.info(f"Loaded {len(docs)} from file {file_path}")
-                    
-            logger.info(f"Total files processed: {processed_count}")
-            logger.info(f"Total documents loaded: {len(documents)}")
-            return documents
-        
-        except Exception as e: 
-            logger.error(f"Error loading documents: {e}")
-            raise
-
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}")
+                
+        self._save_cache(new_cache)
+        logger.info(f"Total files processed: {processed_count}")
+        logger.info(f"Total documents loaded: {len(documents)}")
+        return documents
+    
     def split_documents(self, documents: List[Document]) -> List[Document]: 
         """ Split the documents into chunks which are smaller constituent documents """
         try: 

@@ -1,6 +1,7 @@
 __pycache__/
 chroma*/
 corpus/
+logs/
 .env
 .DS_Store
 
