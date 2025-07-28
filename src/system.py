@@ -215,7 +215,7 @@ class RAGSystem:
             # Split documents into chunks
             chunks = self.document_processor.split_documents(documents)
 
-            success = self.vector_store_manager.add_documents(chunks)
+            success = self.vector_store_manager.add_documents(chunks, force_rebuild=force_rebuild)
             
             if success:
                 build_time = time.perf_counter() - start_time

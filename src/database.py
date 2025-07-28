@@ -90,7 +90,7 @@ class VectorStoreManager:
             chunk.metadata["id"] = chunk_id
 
 
-    def add_documents(self, chunks: List[Document]) -> bool:
+    def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
         """ Add new documents to existing vector store """
         try: 
             if not self._db:
@@ -99,18 +99,24 @@ class VectorStoreManager:
 
             # Get chunks with ids 
             self.calculate_chunk_ids(chunks)
-            
-            existing_items = self._db.get(include=[])
-            existing_ids = set(existing_items["ids"])
-            logger.info(f"Number of existing documents in DB: {len(existing_ids)}")
 
-            # Filter out existing documents
-            new_chunks = []
-            new_ids = []
-            for chunk in chunks:    
-                if chunk.metadata["id"] not in existing_ids: 
-                    new_ids.append(chunk.metadata["id"])
-                    new_chunks.append(chunk)
+            new_chunks: List[Document] = []    
+            new_ids: List[str] = []
+
+            if not force_rebuild: 
+                # Filter out existing documents to avoid rebuilding 
+                existing_items = self._db.get(include=[])
+                existing_ids = set(existing_items["ids"])
+                logger.info(f"Number of existing documents in DB: {len(existing_ids)}")
+
+                for chunk in chunks:    
+                    if chunk.metadata["id"] not in existing_ids: 
+                        new_ids.append(chunk.metadata["id"])
+                        new_chunks.append(chunk)
+            else: 
+                # If force_rebuild enabled just build everything from scratch
+                new_chunks = chunks
+                new_ids = [chunk.metadata["id"] for chunk in chunks]
 
             if len(new_chunks):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")

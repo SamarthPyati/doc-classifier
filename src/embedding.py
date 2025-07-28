@@ -38,7 +38,7 @@ class Embeddings:
     @handle_embedding_errors
     def _get_gemini_model(self) -> GoogleGenerativeAIEmbeddings:
         return GoogleGenerativeAIEmbeddings(
-            model=self.embedding_model_google
+            model=self.embedding_model_google, 
         )
 
     @handle_embedding_errors

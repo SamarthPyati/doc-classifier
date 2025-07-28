@@ -33,7 +33,7 @@ class DocumentProcessor:
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.config.DocProcessor.chunk_size, 
                 chunk_overlap=self.config.DocProcessor.chunk_overlap, 
-                separators=['\n\n', '\n', '', ' '], 
+                separators=['\n\n', '\n', '.', '?', '!', ' ', ''], 
                 add_start_index=True,   # For getting offset of file at split
                 length_function=len,
                 is_separator_regex=False,
