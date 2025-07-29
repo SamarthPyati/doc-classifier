@@ -8,7 +8,7 @@ from .embedding import Embeddings
 import os
 import shutil
 from pathlib import Path
-from typing import List
+from typing import List, Iterator, Tuple
 from dotenv import load_dotenv
 
 import logging
@@ -89,6 +89,13 @@ class VectorStoreManager:
 
             chunk.metadata["id"] = chunk_id
 
+    def __batch_list(self, documents: List[Document], batch_size: int) -> Iterator[Tuple[List[Document], List[str]]]:
+        """ Yield successive n-sized chunks and ids tuple from a list. Helper function for chroma db to keep batch size less than 5461. """
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i:i + batch_size]
+            ids = [doc.metadata["id"] for doc in batch]
+            yield batch, ids
+
 
     def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
         """ Add new documents to existing vector store """
@@ -120,7 +127,8 @@ class VectorStoreManager:
             
             if len(new_chunks):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")
-                self._db.add_documents(new_chunks, ids=new_ids)
+                for batch, ids in self.__batch_list(new_chunks, batch_size=1000): 
+                    self._db.add_documents(batch, ids=ids)
                 return True
             else:
                 logger.info("No new documents to add")
@@ -129,9 +137,6 @@ class VectorStoreManager:
         except Exception as e:
             logger.error(f"Error adding documents: {e}")
             return False
-
-    def get_documents(self) -> List[Document]: 
-        return self._db.get(include=[])
 
     def similarity_search(self, query: str, db: Chroma) -> List[tuple[Document, float]]: 
         """ Perform similarity search with a query """

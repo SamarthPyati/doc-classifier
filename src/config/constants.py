@@ -21,3 +21,7 @@ class EmbeddingModelHuggingFace(str, Enum):
     MINI_LM = "all-MiniLM-L6-v2"            # Embedding length - 364
     LABSE   = "LaBSE"                       # Embedding length - 728
     ROBERTA = "all-roberta-large-v1"        # Embedding length - 1024
+
+class ChunkerType(str, Enum): 
+    SEMANTIC_CHUNKER = "semantic"
+    RECURSIVE_CHARACTER_TEXT_SPLITTER = "recursive"

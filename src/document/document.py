@@ -1,7 +1,4 @@
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_experimental.text_splitter import SemanticChunker
-
 from langchain_community.document_loaders import (
     PyMuPDFLoader, 
     UnstructuredFileLoader, 
@@ -13,8 +10,9 @@ from pathlib import Path
 from typing import List, Union, Iterator, Dict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from .config import RAGConfig, DEFAULT_RAG_CONFIG
-from .embedding import Embeddings
+from src.config import RAGConfig, DEFAULT_RAG_CONFIG
+from src.embedding import Embeddings
+from src.document.chunking import get_chunker
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,23 +22,7 @@ class DocumentProcessor:
         self.config = config
         self.embeddings = Embeddings(config)
         self.cache_path = Path(self.config.corpus_path) / '.cache.json'
-
-        if self.config.DocProcessor.use_semantic_chunking:
-            self.text_splitter = SemanticChunker(
-                embeddings=self.embeddings.get_embedding_model(),
-                add_start_index=True, 
-                breakpoint_threshold_type="standard_deviation", 
-                min_chunk_size=self.config.DocProcessor.chunk_size, 
-            )
-        else: 
-            self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=self.config.DocProcessor.chunk_size, 
-                chunk_overlap=self.config.DocProcessor.chunk_overlap, 
-                separators=['\n\n', '\n', '.', '?', '!', ' ', ''], 
-                add_start_index=True,   # For getting offset of file at split
-                length_function=len,
-                is_separator_regex=False,
-            )
+        self.chunker = get_chunker(self.config, self.embeddings)
     
     def _get_file_hash(self, file_path: Path) -> str:
         """ OPTIMIZATION: Get the hash of file content by reading in chunks """
@@ -158,7 +140,7 @@ class DocumentProcessor:
     def split_documents(self, documents: List[Document]) -> List[Document]: 
         """ Split the documents into chunks which are smaller constituent documents """
         try: 
-            chunks = self.text_splitter.split_documents(documents=documents)
+            chunks = self.chunker.split_documents(documents=documents)
             return chunks
         except Exception as e: 
             logger.error(f"Error splitting documents: {e}")

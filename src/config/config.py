@@ -6,17 +6,18 @@ from .constants import (
     EmbeddingProvider,
     EmbeddingModelHuggingFace,
     LLMModel,
-    LLMModelProvider
+    LLMModelProvider, 
+    ChunkerType
 )
 
 class DocProcessorSettings(BaseModel):
     """ Settings for document processing and chunking """
-    # Takes long time
-    use_semantic_chunking: bool = False
+    # Chunking strategy
+    chunker_type: ChunkerType = ChunkerType.RECURSIVE_CHARACTER_TEXT_SPLITTER
 
     # Chunk size to split the document in (Makes the model get precise context to answer better)
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_size: int = 400
+    chunk_overlap: int = 0
     
     # PDF specific settings
     pdf_extract_images: bool = False
@@ -32,14 +33,14 @@ class EmbeddingSettings(BaseModel):
     """ Settings for text embedding models and providers """
     provider: EmbeddingProvider = Field(default=EmbeddingProvider.GOOGLE, alias="embedding_provider")
     normalize: bool = Field(default=True, alias="normalize_embeddings")
-    
-    batch_size: int = 1000
 
     # Model names for different providers
     huggingface_model: EmbeddingModelHuggingFace = Field(default=EmbeddingModelHuggingFace.MINI_LM, alias="embedding_model_huggingface")
     google_model: str = Field(default="models/embedding-001", alias="embedding_model_google")
     openai_model: str = Field(default="text-embedding-3-small", alias="embedding_model_openai")
 
+    # Batch operations 
+    batch_size: int = 1000
 class DatabaseSettings(BaseModel):
     """ Settings for the vector database """
     # Chroma db path to store locally

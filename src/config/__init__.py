@@ -7,7 +7,8 @@ from .constants import (
     LLMModel, 
     LLMModelProvider, 
     EmbeddingProvider, 
-    EmbeddingModelHuggingFace
+    EmbeddingModelHuggingFace, 
+    ChunkerType
 )
 
 from .logging_config import setup_logging
@@ -20,4 +21,5 @@ __all__ = (
     "RAGConfig", 
     "setup_logging", 
     "DEFAULT_RAG_CONFIG", 
+    "ChunkerType" 
 )

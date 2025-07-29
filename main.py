@@ -11,7 +11,6 @@ warnings.filterwarnings('ignore', category=Warning, module='unstructured')
 warnings.filterwarnings('ignore', category=UserWarning, module='resource_tracker')      # TODO: Understand and fix semaphore leaks
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-
 ENABLE_PARSER: bool = True
 
 def main(): 
