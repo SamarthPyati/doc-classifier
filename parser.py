@@ -1,41 +1,46 @@
 from src import RAGConfig
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 def parser(config: RAGConfig):
+    # Use a formatter that shows default values in help messages 
+    formatter = lambda prog: ArgumentDefaultsHelpFormatter(prog, max_help_position=35)
+    
     parser = ArgumentParser(
         prog="Document Classifier",
         description="A RAG Pipeline to retrieve relevant documents for LLM interaction.",
         usage="python main.py <command> [options]", 
+        formatter_class=formatter, 
         add_help=True
     )
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # query <query>
-    query_parser = subparsers.add_parser("query", help="Ask a question using the RAG system")
-    query_parser.add_argument("query", type=str, help="The query string")
-
-    # index [corpus_path] [--overwrite]
-    index_parser = subparsers.add_parser("index", help="Index documents from a folder")
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+    
+    # --- Index Command ---
+    index_parser = subparsers.add_parser("index", help="Build or check the knowledge base from documents.", formatter_class=formatter)
     index_parser.add_argument(
         "corpus_path",
         nargs="?",
         default=config.corpus_path,
         type=str,
-        help="Path to document corpus (default: 'corpus')"
+        help="Path to the document corpus directory."
     )
-    index_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing index")
-    index_parser.add_argument("--check", action="store_true", help="Check the amount of files present in the index")
+    index_parser.add_argument("--overwrite", action="store_true", help="Force rebuild, overwriting the existing index.")
+    index_parser.add_argument("--check", action="store_true", help="Check the number of documents currently in the index.")
 
-    # chat [--session, --stream]
-    chat_parser = subparsers.add_parser("chat", help="Start interactive chat")
-    chat_parser.add_argument("--session", type=str, help="Specific session ID to use")
-    chat_parser.add_argument("--stream", action="store_true", help="Enable streaming responses")
+    # --- Query Command ---
+    query_parser = subparsers.add_parser("query", help="Ask a single question and get a direct answer.", formatter_class=formatter)
+    query_parser.add_argument("query", type=str, help="The question to ask the RAG system.")
 
-    # Chat session management 
-    session_parser = subparsers.add_parser("sessions", help="Manage chat sessions")
-    session_parser.add_argument("--list", action="store_true", help="List all sessions")
-    session_parser.add_argument("--clear", type=str, help="Clear specific session")
-    session_parser.add_argument("--history", type=str, help="Show history for session")
+    # --- Chat Command ---
+    chat_parser = subparsers.add_parser("chat", help="Start an interactive chat session.", formatter_class=formatter)
+    chat_parser.add_argument("--session", type=str, default=None, help="A specific session ID to resume a previous chat.")
+    chat_parser.add_argument("--stream", action="store_true", help="Enable real-time streaming for responses.")
 
-    return parser.parse_args() 
+    # --- Sessions Command ---
+    session_parser = subparsers.add_parser("sessions", help="Manage chat sessions.", formatter_class=formatter)
+    session_group = session_parser.add_mutually_exclusive_group(required=True)
+    session_group.add_argument("--list", action="store_true", help="List all saved session IDs.")
+    session_group.add_argument("--history", type=str, metavar="SESSION_ID", help="Show the conversation history for a specific session.")
+    session_group.add_argument("--clear", type=str, metavar="SESSION_ID", help="Clear the history for a specific session.")
+
+    return parser.parse_args()

@@ -17,62 +17,53 @@ def main():
     setup_logging()
     config = RAGConfig()    
 
-    try: 
-        if ENABLE_PARSER: 
-            args = parser(config)
-            rag_system = RAGSystem(config)
+    if ENABLE_PARSER: 
+        args = parser(config)
+        rag_system = RAGSystem(config)
 
-            if args.command == "index":
-                if args.check: 
-                    print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
-                else: 
-                    config.corpus_path = args.corpus_path
-                    print(f"📚 Indexing documents from: {config.corpus_path}")
-                    success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
-                    if success:
-                        print("✅ Knowledge base built successfully!")
-                    else:
-                        print("❌ Failed to build knowledge base.")
+        if args.command == "index":
+            if args.check: 
+                print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
+            else: 
+                config.corpus_path = args.corpus_path
+                print(f"📚 Indexing documents from: {config.corpus_path}")
+                success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
+                if success:
+                    print("✅ Knowledge base built successfully!")
+                else:
+                    print("❌ Failed to build knowledge base.")
 
-            elif args.command == "query":
-                print(f"\n❓ Query: {args.query}")
-                print("=" * 100)
-                result = rag_system.query(args.query)
-                print(f"🤖 Response: {result.response}")
-                if result.sources:
-                    print(f"\n📚 Sources: {', '.join(result.sources)}")
-                    print(f"🎯 Confidence: {result.confidence:.2f}")
-                    print(f"⚡ Time: {result.processing_time:.2f}s")
+        elif args.command == "query":
+            print(f"\n❓ Query: {args.query}")
+            print("=" * 100)
+            result = rag_system.query(args.query)
+            print(f"🤖 Response: {result.response}")
+            if result.sources:
+                print(f"\n📚 Sources: {', '.join(result.sources)}")
+                print(f"🎯 Confidence: {result.confidence:.2f}")
+                print(f"⚡ Time: {result.processing_time:.2f}s")
 
-            elif args.command == "chat":
-                interactive_chat(rag_system, args.session, args.stream)
+        elif args.command == "chat":
+            interactive_chat(rag_system, args.session, args.stream)
 
-            elif args.command == "sessions":
-                manage_sessions(rag_system, args)
-        else: 
-            rag_system = RAGSystem(config)
-            rag_system.build_knowledge_base()
+        elif args.command == "sessions":
+            manage_sessions(rag_system, args)
+    else: 
+        rag_system = RAGSystem(config)
+        rag_system.build_knowledge_base()
 
-            queries: list[str] = [
-                "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",
-                "Provide a summary of procurement policay of Shimla Jal Prabandhan Nigam Limited (SJPNL).",
-                "Explain Nature and Scope & Human Resource Planning of HR document of UTKAL University."
-            ]
+        queries: list[str] = [
+            "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",
+            "Provide a summary of procurement policay of Shimla Jal Prabandhan Nigam Limited (SJPNL).",
+            "Explain Nature and Scope & Human Resource Planning of HR document of UTKAL University."
+        ]
 
-            for query in queries:
-                print(f"\nQuery: {query}")
-                print("=" * 100)
-                
-                result = rag_system.query(query)
-                print(result)
-
-    except KeyboardInterrupt:
-        logger.info("Program interrupted by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        sys.exit(1)
-
+        for query in queries:
+            print(f"\nQuery: {query}")
+            print("=" * 100)
+            
+            result = rag_system.query(query)
+            print(result)
 
 def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_streaming: bool = False):
     """Enhanced interactive chat with LangChain"""
@@ -206,7 +197,14 @@ def manage_sessions(rag_system: RAGSystem, args):
                 print(f"{role_emoji} {msg['role']}: {msg['content']}")
 
 if __name__ == "__main__": 
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProgram interrupted by user. Exiting.")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        sys.exit(1)
 
 
 # TODO: Indexing is painfully slow, diagnose the problem and fix it. 
