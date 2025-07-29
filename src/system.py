@@ -1,7 +1,7 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate, BasePromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
@@ -16,9 +16,48 @@ import time
 import uuid
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
+import functools
 
 import logging
 logger = logging.getLogger(__name__)
+
+PROMPTS: Dict[str, BasePromptTemplate] = {
+    "query": PromptTemplate(
+        input_variables=["context", "question"],
+        template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
+            Context Information:
+            {context}
+            
+            Question: {question}
+            
+            Instructions:
+            - Answer using ONLY the provided context
+            - Be comprehensive yet concise
+            - If context is insufficient, state this clearly, do not make up any answers by yourself
+            - Cite specific sources when mentioning details
+            - Provide structured, actionable information when possible
+            
+            Answer:"""
+    ), 
+
+    "chat": ChatPromptTemplate.from_messages([
+            ("system", """You are an expert AI assistant engaged in a conversation. Use the provided context and conversation history to give accurate, helpful responses.
+
+            Context Information:
+            {context}
+
+            Instructions:
+            - Use the context and conversation history to provide relevant answers
+            - Be conversational and natural while staying accurate
+            - Reference previous parts of the conversation when relevant
+            - If the question relates to earlier topics, acknowledge that connection
+            - If context is insufficient for a complete answer, ask clarifying questions
+            - Maintain consistency with previous responses
+            - Always cite sources when providing specific information"""),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "{question}")
+    ])
+}
 
 @dataclass 
 class Result:
@@ -81,15 +120,23 @@ class RAGSystem:
         self.current_session_id = str(uuid.uuid4())
         self.session_store = SessionStore()
 
-        # Load vector store and initialize llm 
-        self.db = self.vector_store_manager.load_vector_store()
-        self.llm = self._initialize_llm()
+        self._db = None
+        self._llm = None
 
-        
         # Build LCEL chains
         self.query_chain = self._build_query_chain()
-        self.chat_chain = self._build_chat_chain()
         self.conversational_chain = self._build_conversational_chain()
+
+    # Lazy Getters for slow-to-initialize objects
+    def _get_llm(self):
+        if self._llm is None:
+            self._llm = self._initialize_llm()
+        return self._llm
+
+    def _get_db(self):
+        if self._db is None:
+            self._db = self.vector_store_manager.load_vector_store()
+        return self._db
 
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """ Initialize the LLM based on configuration """
@@ -132,16 +179,15 @@ class RAGSystem:
             logger.error(f"Error initializing LLM: {e}")
             return None
 
+    # Cache repeated queries
+    @functools.lru_cache(maxsize=128)                       
     def _retrieve_context(self, query: str) -> RAGContext:
         """ Retrieve relevant documents using vector search """
         try:
-            if not self.db:
-                self.db = self.vector_store_manager.load_vector_store()
-            
-            results = self.vector_store_manager.similarity_search(query, self.db)
+            results = self.vector_store_manager.similarity_search(query, self._get_db())
             
             if not results:
-                return RAGContext(query=query)
+                return RAGContext()
             
             documents = [doc for doc, _score in results]
             sources = list(set([doc.metadata.get("source", "Unknown") for doc in documents]))
@@ -151,11 +197,10 @@ class RAGSystem:
                 documents=documents,
                 sources=sources,
                 confidence=confidence,
-                query=query
             )
         except Exception as e:
             logger.error(f"Error retrieving documents: {e}")
-            return RAGContext(query=query)
+            return RAGContext()
 
     def _format_context(self, context: RAGContext) -> str:
         """ Format retrieved documents into context string """
@@ -169,34 +214,18 @@ class RAGSystem:
     def _build_query_chain(self):
         """Build LCEL chain for single queries without conversation history"""
 
-        query_prompt = PromptTemplate(
-            input_variables=["context", "question"],
-            template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
-        Context Information:
-        {context}
-        
-        Question: {question}
-        
-        Instructions:
-        - Answer using ONLY the provided context
-        - Be comprehensive yet concise
-        - If context is insufficient, state this clearly, do not make up any answers by yourself
-        - Cite specific sources when mentioning details
-        - Provide structured, actionable information when possible
-        
-        Answer:"""
-        )
+        query_prompt = PROMPTS.get("query")
         
         chain = (
             RunnablePassthrough()
             | query_prompt 
-            | self.llm 
+            | self._get_llm()
             | StrOutputParser()
         )
         
         return chain
 
-    # TODO: Automatically detect new document upload and rebuild the knowledge base
+    # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
         """ Build the knowledge base i.e index the database from documents """
         try: 
@@ -263,23 +292,7 @@ class RAGSystem:
     def _build_chat_chain(self):
         """Build LCEL chain for chat with conversation history"""
         
-        chat_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert AI assistant engaged in a conversation. Use the provided context and conversation history to give accurate, helpful responses.
-
-            Context Information:
-            {context}
-
-            Instructions:
-            - Use the context and conversation history to provide relevant answers
-            - Be conversational and natural while staying accurate
-            - Reference previous parts of the conversation when relevant
-            - If the question relates to earlier topics, acknowledge that connection
-            - If context is insufficient for a complete answer, ask clarifying questions
-            - Maintain consistency with previous responses
-            - Always cite sources when providing specific information"""),
-            MessagesPlaceholder(variable_name="history"),
-            ("human", "{question}")
-        ])
+        chat_prompt = PROMPTS.get("chat")
         
         # Build the chain with context retrieval
         def prepare_chat_input(inputs):
@@ -300,7 +313,7 @@ class RAGSystem:
         chain = (
             RunnableLambda(prepare_chat_input)
             | RunnableParallel({
-                "response": chat_prompt | self.llm | StrOutputParser(),
+                "response": chat_prompt | self._get_llm() | StrOutputParser(),
                 "rag_context": RunnableLambda(lambda x: x["rag_context"])
             })
         )
@@ -308,14 +321,15 @@ class RAGSystem:
         return chain
 
     def _build_conversational_chain(self):
-        """Build conversational chain with message history management"""
+        """ Build conversational chain with message history management """ 
         
         # Wrap the chat chain with message history
         conversational_chain = RunnableWithMessageHistory(
-            self.chat_chain,
+            self._build_chat_chain(),
             self.session_store.get_session_history,
             input_messages_key="question",
             history_messages_key="history",
+            output_messages_key="response"
         )
         
         return conversational_chain
@@ -325,7 +339,7 @@ class RAGSystem:
     # Optimal approach would be to chat query the entire corpus once and store that context into the conversation (Make a conversation 
     # class) and use that to answer the follow up questions. 
     def chat(self, message: str, session_id: Optional[str] = None) -> Result:
-        """Process a chat message with conversation history"""
+        """ Process a chat message with conversation history """
         try:
             if session_id is None:
                 session_id = self.current_session_id
@@ -357,7 +371,7 @@ class RAGSystem:
             return Result(response=f"Error processing message: {str(e)}")
 
     def stream_chat(self, message: str, session_id: Optional[str] = None):
-        """Stream chat response for real-time interaction"""
+        """ Stream chat response for real-time interaction """
         if session_id is None:
             session_id = self.current_session_id
         
@@ -375,7 +389,7 @@ class RAGSystem:
             yield f"Error: {str(e)}"
 
     def get_chat_history(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get chat history for a session"""
+        """ Get chat history for a session """
         if session_id is None:
             session_id = self.current_session_id
         
@@ -392,7 +406,7 @@ class RAGSystem:
         return formatted_history
 
     def clear_chat_history(self, session_id: Optional[str] = None):
-        """Clear chat history for a session"""
+        """ Clear chat history for a session """
         if session_id is None:
             session_id = self.current_session_id
         
@@ -400,14 +414,14 @@ class RAGSystem:
         logger.info(f"Cleared chat history for session: {session_id}")
 
     def create_new_session(self) -> str:
-        """Create a new chat session"""
+        """ Create a new chat session """
         new_session_id = str(uuid.uuid4())
         self.current_session_id = self.session_store.new_session(new_session_id)
         logger.info(f"Created new chat session: {new_session_id}")
         return new_session_id
 
     def list_sessions(self) -> List[str]:
-        """List all active sessions"""
+        """ List all active sessions """
         return self.session_store.list_sessions()
 
     def document_count(self) -> int: 
