@@ -17,15 +17,35 @@ from src.document.chunking import get_chunker
 import logging
 logger = logging.getLogger(__name__)
 
+def load_document_worker(file_path: str) -> List[Document]:
+    """
+    Loads a single document based on its file extension.
+    NOTE: This function is designed to be run in a separate process and 
+    defined at the top level so it can be pickled by multiprocessing.
+    """
+    try:
+        file_ext = Path(file_path).suffix.lower()
+        if file_ext == ".pdf":
+            loader = PyMuPDFLoader(file_path)
+        else:
+            loader = UnstructuredFileLoader(file_path, strategy="fast")
+        
+        docs = loader.load()
+        
+        for doc in docs:
+            doc.metadata["file_type"] = file_ext[1:]
+        return docs
+    except Exception as e:
+        logger.error(f"Error loading file {file_path}: {e}")
+        return []
+
 class DocumentProcessor: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG) -> None:
         self.config = config
-        self.embeddings = Embeddings(config)
         self.cache_path = Path(self.config.corpus_path) / '.cache.json'
-        self.chunker = get_chunker(self.config, self.embeddings)
     
     def _get_file_hash(self, file_path: Path) -> str:
-        """ OPTIMIZATION: Get the hash of file content by reading in chunks """
+        """OPTIMIZATION: Get the hash of file content by reading in chunks."""
         h = hashlib.md5()
         with file_path.open("rb") as f:
             while chunk := f.read(8192):
@@ -41,54 +61,10 @@ class DocumentProcessor:
     def _save_cache(self, cache: Dict[str, str]) -> None:
         with self.cache_path.open("w", encoding="utf-8") as f:
             json.dump(cache, f, indent=2)
-    
-    def _load_pdf(self, file_path: str, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]:  
-        """ Load a PDF file """
-        try: 
-            loader = PyMuPDFLoader(
-                    file_path,
-                    extract_images=self.config.DocProcessor.pdf_extract_images, 
-                    extract_tables=self.config.DocProcessor.pdf_table_structure_infer_mode
-                )
-            docs = loader.load() if not lazy_load else loader.lazy_load()
-            
-            # Add filetype in metadata 
-            for doc in docs: 
-                doc.metadata.update({
-                    "file_type": "pdf"
-                })
-            return docs
-        except Exception as e: 
-            logger.error(f"Error in loading PDF file {file_path}: {e}")
-            return []
-
-    def _load_single_document(self, file_path: str, lazy_load: bool = False) -> Union[List[Document], Iterator[Document]]:  
-        """ Load single document with appropriate loader """
-        try: 
-            file_ext = Path(file_path).suffix.lower()
-            match file_ext: 
-                case ".pdf":
-                    return self._load_pdf(file_path, lazy_load=lazy_load) 
-                case _: 
-                    loader = UnstructuredFileLoader(file_path=file_path, strategy="fast")
-                    docs = loader.load() if not lazy_load else loader.lazy_load()
-
-                    # Add filetype in metadata
-                    for doc in docs:    
-                        doc.metadata.update({
-                            'file_type': file_ext[1:],  # Remove the dot from extension
-                        })
-                    return docs
-
-        except Exception as e:
-            logger.error(f"Error in loading file {file_path}:{e}")
-            return []
 
     def load_documents(self, force_reload: bool = False) -> List[Document]: 
-        """ Load documents from corpus """
+        """ Load documents from the corpus """
         documents: List[Document] = []
-        processed_count = 0
-        
         cache = self.load_cache() if not force_reload else {}
         new_cache = {}
         
@@ -96,18 +72,16 @@ class DocumentProcessor:
         if not corpus_path.exists(): 
             raise FileNotFoundError(f"Corpus path {self.config.corpus_path} not found.")
         
-        files_to_process = list(corpus_path.rglob("*"))
+        # Filter unsupported files 
+        files_to_process = [
+            f for f in corpus_path.rglob("*") 
+            if f.is_file() and f.suffix.lower() in self.config.DocProcessor.supported_extensions
+        ]
         
+        # Faster loading with multiprocessing 
         with ProcessPoolExecutor(max_workers=8) as executor: 
-            future_to_file = {}             # Future to File map to extract result 
+            future_to_file = {}
             for file_path in files_to_process: 
-                if not file_path.is_file(): 
-                    continue
-                
-                if file_path.suffix.lower() not in self.config.DocProcessor.supported_extensions: 
-                    logger.warning(f"Unsupported file format: {file_path.name}")
-                    continue
-
                 file_id = str(file_path)
                 try: 
                     current_hash = self._get_file_hash(file_path)
@@ -117,31 +91,39 @@ class DocumentProcessor:
                         logger.info(f"Skipping cached and unchanged file: {file_path.name}")
                         continue
 
-                    future = executor.submit(self._load_single_document, file_path)
+                    # Submit the top-level worker function
+                    future = executor.submit(load_document_worker, str(file_path))
                     future_to_file[future] = file_path
                 except Exception as e:
                     logger.error(f"Failed to submit {file_path.name} for processing: {e}")
 
-            for future in as_completed(list(future_to_file.keys())):
-                file_path = future_to_file.get(future, 'Unknown')
+            for future in as_completed(future_to_file):
+                file_path = future_to_file[future]
                 try:
                     docs = future.result()
-                    documents.extend(list(docs))
+                    documents.extend(docs)
                     logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
-                    processed_count += 1
                 except Exception as e:
-                    logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}")
+                    logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}", exc_info=True)
                 
         self._save_cache(new_cache)
-        logger.info(f"Total files processed: {processed_count}")
         logger.info(f"Total documents loaded: {len(documents)}")
         return documents
     
     def split_documents(self, documents: List[Document]) -> List[Document]: 
-        """ Split the documents into chunks which are smaller constituent documents """
-        try: 
-            chunks = self.chunker.split_documents(documents=documents)
+        """
+        Split the documents into chunks.
+        The chunker is created here, just-in-time, to avoid pickling issues.
+        """
+        try:    
+            # Embedding model is only needed for chunking, so we don't initialize it as a class param
+            # Also doing this to keep the DocumentProcessor instance pickleable.
+            embeddings = Embeddings(self.config)
+            chunker = get_chunker(self.config, embeddings)
+            
+            chunks = chunker.split_documents(documents=documents)
+            logger.info(f"Split {len(documents)} documents into {len(chunks)} chunks.")
             return chunks
         except Exception as e: 
-            logger.error(f"Error splitting documents: {e}")
+            logger.error(f"Error splitting documents: {e}", exc_info=True)
             raise

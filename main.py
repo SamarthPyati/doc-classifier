@@ -23,13 +23,16 @@ def main():
             rag_system = RAGSystem(config)
 
             if args.command == "index":
-                config.corpus_path = args.corpus_path
-                print(f"📚 Indexing documents from: {config.corpus_path}")
-                success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
-                if success:
-                    print("✅ Knowledge base built successfully!")
-                else:
-                    print("❌ Failed to build knowledge base.")
+                if args.check: 
+                    print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
+                else: 
+                    config.corpus_path = args.corpus_path
+                    print(f"📚 Indexing documents from: {config.corpus_path}")
+                    success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
+                    if success:
+                        print("✅ Knowledge base built successfully!")
+                    else:
+                        print("❌ Failed to build knowledge base.")
 
             elif args.command == "query":
                 print(f"\n❓ Query: {args.query}")

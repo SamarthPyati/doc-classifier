@@ -25,6 +25,7 @@ def parser(config: RAGConfig):
         help="Path to document corpus (default: 'corpus')"
     )
     index_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing index")
+    index_parser.add_argument("--check", action="store_true", help="Check the amount of files present in the index")
 
     # chat [--session, --stream]
     chat_parser = subparsers.add_parser("chat", help="Start interactive chat")

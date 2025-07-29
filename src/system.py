@@ -35,7 +35,7 @@ class Result:
                 f"Sources: {self.sources}\n"
                 f"Confidence: {self.confidence:.3f}\n"
                 f"Number of sources: {self.num_sources}\n"
-                f"Generation time: {self.generation_time:.3f} second(s)\n")
+                f"Generation time: {self.processing_time:.3f} second(s)\n")
 
 @dataclass 
 class RAGContext: 
@@ -162,12 +162,9 @@ class RAGSystem:
         if not context.documents:
             return "No relevant documents found."
         
-        formatted_docs = []
-        for i, doc in enumerate(context.documents, 1):
-            source = doc.metadata.get("source", "Unknown")
-            formatted_docs.append(f"Document {i} -> (Source: {source}):\n{doc.page_content}")
+        formatted_docs = [doc.page_content for doc in context.documents]
         
-        return ("\n\n" + "=" * 70 + "\n\n").join(formatted_docs)
+        return ("\n" + "=" * 100 + "\n").join(formatted_docs)
 
     def _build_query_chain(self):
         """Build LCEL chain for single queries without conversation history"""
@@ -412,3 +409,6 @@ class RAGSystem:
     def list_sessions(self) -> List[str]:
         """List all active sessions"""
         return self.session_store.list_sessions()
+
+    def document_count(self) -> int: 
+        return self.vector_store_manager.get_docs_count()

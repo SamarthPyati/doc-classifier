@@ -137,6 +137,12 @@ class VectorStoreManager:
         except Exception as e:
             logger.error(f"Error adding documents: {e}")
             return False
+    
+    def get_docs_count(self) -> int: 
+        try: 
+            return len(self._db.get(include=[]))
+        except Exception as e: 
+            logger.error(f"Error retrieving document count: {e}")
 
     def similarity_search(self, query: str, db: Chroma) -> List[tuple[Document, float]]: 
         """ Perform similarity search with a query """
