@@ -56,10 +56,7 @@ class ChainFactory:
         """Build LCEL chain for single queries without conversation history"""
         
         chain = (
-            {
-                "context": RunnableLambda(self.retriever_f) | RunnableLambda(self.format_context_f),
-                "question": RunnablePassthrough()
-            }
+            RunnablePassthrough()
             | PROMPTS.get("query") 
             | self.llm
             | StrOutputParser()
