@@ -3,9 +3,10 @@ chroma*/
 corpus/
 logs/
 .env
+.idea/
 .DS_Store
 
-src/system_upgraded.py
+*sessions.json
 
 *.log
 

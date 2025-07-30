@@ -175,7 +175,7 @@ def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_strea
             print(f"❌ Error: {e}")
 
 def manage_sessions(rag_system: RAGSystem, args):
-    """Manage chat sessions"""
+    """ Manage chat sessions """
     if args.list:
         sessions = rag_system.list_sessions()
         print(f"📋 Active sessions ({len(sessions)}):")

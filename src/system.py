@@ -4,13 +4,14 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate, BasePromptTemplate
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser
 from langchain.schema import Document
 
 from .document import DocumentProcessor
 from .database import VectorStoreManager
 from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
+from .models import RAGContext, Result
+from .session import SessionStore
 
 import time
 import uuid
@@ -22,7 +23,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 PROMPTS: Dict[str, BasePromptTemplate] = {
-    "query": PromptTemplate(
+    "query": PromptTemplate( 
         input_variables=["context", "question"],
         template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
             Context Information:
@@ -58,55 +59,6 @@ PROMPTS: Dict[str, BasePromptTemplate] = {
             ("human", "{question}")
     ])
 }
-
-@dataclass 
-class Result:
-    response: str       = "Null"
-    sources: List[str]  = field(default_factory=list)
-    confidence: float   = 0.0
-    num_sources: int    = 0
-    processing_time: float = 0.0
-    session_id: str = None
-
-    def __repr__(self):
-        return (f"Response: {self.response}\n"
-                f"Session ID: {self.session_id}\n"
-                f"Sources: {self.sources}\n"
-                f"Confidence: {self.confidence:.3f}\n"
-                f"Number of sources: {self.num_sources}\n"
-                f"Generation time: {self.processing_time:.3f} second(s)\n")
-
-@dataclass 
-class RAGContext: 
-    """Data class to hold RAG context and sources"""
-    documents: List[Document] = field(default_factory=list)
-    sources: List[str] = field(default_factory=list)
-    confidence: float = 0.0
-    query: str = ""
-
-
-# TODO: Also autogenerate chat history and store in session store 
-# TODO: Store the session store in database instead of in memory
-class SessionStore: 
-    """In-memory session store for chat histories"""
-    def __init__(self): 
-        self.store: Dict[str, BaseChatMessageHistory] = {}
-    
-    def get_session_history(self, session_id: str) -> BaseChatMessageHistory: 
-        if session_id not in self.store: 
-            self.store[session_id] = InMemoryChatMessageHistory()
-        return self.store[session_id]
-    
-    def new_session(self, session_id: str) -> str: 
-        self.store[session_id] = InMemoryChatMessageHistory()
-        return session_id
-
-    def clear_session(self, session_id: str): 
-        if session_id in self.store: 
-            self.store[session_id].clear()
-    
-    def list_sessions(self) -> List[str]: 
-        return list(self.store.keys())
     
 class RAGSystem: 
     """ Main RAG System orchestrator """
@@ -357,6 +309,9 @@ class RAGSystem:
             
             processing_time = time.time() - start_time
             
+            # Save the current session to disk
+            self.session_store._save_to_disk()
+            
             return Result(
                 response = result["response"],
                 sources = result["rag_context"].sources,
@@ -384,6 +339,8 @@ class RAGSystem:
             ):
                 if "response" in chunk:
                     yield chunk["response"]
+            
+            self.session_store._save_to_disk()
         except Exception as e:
             logger.error(f"Error streaming chat: {e}")
             yield f"Error: {str(e)}"
@@ -416,7 +373,7 @@ class RAGSystem:
     def create_new_session(self) -> str:
         """ Create a new chat session """
         new_session_id = str(uuid.uuid4())
-        self.current_session_id = self.session_store.new_session(new_session_id)
+        self.session_store.new_session(new_session_id)
         logger.info(f"Created new chat session: {new_session_id}")
         return new_session_id
 
