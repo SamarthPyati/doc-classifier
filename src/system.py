@@ -1,14 +1,10 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate, BasePromptTemplate
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda, RunnableParallel
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.output_parsers import StrOutputParser
-from langchain.schema import Document
 
 from .database import VectorStoreManager
 from .document import DocumentProcessor
+from .chains import ChainFactory
 from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 from .models import RAGContext, Result
 from .session import SessionStore
@@ -20,44 +16,6 @@ import functools
 
 import logging
 logger = logging.getLogger(__name__)
-
-PROMPTS: Dict[str, BasePromptTemplate] = {
-    "query": PromptTemplate( 
-        input_variables=["context", "question"],
-        template="""You are an expert AI assistant that provides accurate, comprehensive and concise answers based on the given context.
-            Context Information:
-            {context}
-            
-            Question: {question}
-            
-            Instructions:
-            - Answer using ONLY the provided context
-            - Be comprehensive yet concise
-            - If context is insufficient, state this clearly, do not make up any answers by yourself
-            - Cite specific sources when mentioning details
-            - Provide structured, actionable information when possible
-            
-            Answer:"""
-    ), 
-
-    "chat": ChatPromptTemplate.from_messages([
-            ("system", """You are an expert AI assistant engaged in a conversation. Use the provided context and conversation history to give accurate, helpful responses.
-
-            Context Information:
-            {context}
-
-            Instructions:
-            - Use the context and conversation history to provide relevant answers
-            - Be conversational and natural while staying accurate
-            - Reference previous parts of the conversation when relevant
-            - If the question relates to earlier topics, acknowledge that connection
-            - If context is insufficient for a complete answer, ask clarifying questions
-            - Maintain consistency with previous responses
-            - Always cite sources when providing specific information"""),
-            MessagesPlaceholder(variable_name="history"),
-            ("human", "{question}")
-    ])
-}
     
 class RAGSystem: 
     """ Main RAG System orchestrator """
@@ -69,13 +27,19 @@ class RAGSystem:
         # Make a uuid for current chat session
         self.current_session_id = str(uuid.uuid4())
         self.session_store = SessionStore()
-
+        
         self._db = None
         self._llm = None
 
-        # Build LCEL chains
-        self.query_chain = self._build_query_chain()
-        self.conversational_chain = self._build_conversational_chain()
+        chain_factory = ChainFactory(
+            llm=self._get_llm(), 
+            retrieve_context_f=self._retrieve_context,
+            format_context_f=self._format_context
+        )
+
+        self.query_chain = chain_factory.create_query_chain()
+        self.conversational_chain = chain_factory.create_conversational_chain(self.session_store)
+
 
     # Lazy Getters for slow-to-initialize objects
     def _get_llm(self):
@@ -161,20 +125,6 @@ class RAGSystem:
         
         return ("\n" + "=" * 100 + "\n").join(formatted_docs)
 
-    def _build_query_chain(self):
-        """Build LCEL chain for single queries without conversation history"""
-
-        query_prompt = PROMPTS.get("query")
-        
-        chain = (
-            RunnablePassthrough()
-            | query_prompt 
-            | self._get_llm()
-            | StrOutputParser()
-        )
-        
-        return chain
-
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
         """ Build the knowledge base i.e index the database from documents """
         try: 
@@ -237,51 +187,6 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"Error querying RAG system: {e}")
             return Result(response=f"Error processing query: {e}")
-
-    def _build_chat_chain(self):
-        """Build LCEL chain for chat with conversation history"""
-        
-        chat_prompt = PROMPTS.get("chat")
-        
-        # Build the chain with context retrieval
-        def prepare_chat_input(inputs):
-            question = inputs["question"]
-            history = inputs.get("history", [])
-            
-            # Retrieve context based on current question
-            rag_context = self._retrieve_context(question)
-            formatted_context = self._format_context(rag_context)
-            
-            return {
-                "context": formatted_context,
-                "question": question,
-                "history": history,
-                "rag_context": rag_context  # Pass for metadata
-            }
-        
-        chain = (
-            RunnableLambda(prepare_chat_input)
-            | RunnableParallel({
-                "response": chat_prompt | self._get_llm() | StrOutputParser(),
-                "rag_context": RunnableLambda(lambda x: x["rag_context"])
-            })
-        )
-        
-        return chain
-
-    def _build_conversational_chain(self):
-        """ Build conversational chain with message history management """ 
-        
-        # Wrap the chat chain with message history
-        conversational_chain = RunnableWithMessageHistory(
-            self._build_chat_chain(),
-            self.session_store.get_session_history,
-            input_messages_key="question",
-            history_messages_key="history",
-            output_messages_key="response"
-        )
-        
-        return conversational_chain
 
     # IDEATE: How will this chat system work?
     # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 

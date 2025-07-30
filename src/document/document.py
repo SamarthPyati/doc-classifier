@@ -7,7 +7,7 @@ from langchain_community.document_loaders import (
 import json
 import hashlib
 from pathlib import Path
-from typing import List, Union, Iterator, Dict
+from typing import List, Dict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
