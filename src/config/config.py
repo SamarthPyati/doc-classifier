@@ -48,7 +48,7 @@ class DatabaseSettings(BaseModel):
     collection_name: str = "rag_documents"
 
     # Max results to return after similarity search
-    max_results: int = 10
+    max_results: int = 5
 
     # NOTE: Set threshold to a lower value preferrably .2 or .3 if using a lightweight embedding model
     # Min threshold to classify as related in similarity search

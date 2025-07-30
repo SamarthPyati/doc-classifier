@@ -7,8 +7,8 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.output_parsers import StrOutputParser
 from langchain.schema import Document
 
-from .document import DocumentProcessor
 from .database import VectorStoreManager
+from .document import DocumentProcessor
 from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
 from .models import RAGContext, Result
 from .session import SessionStore
@@ -16,7 +16,6 @@ from .session import SessionStore
 import time
 import uuid
 from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
 import functools
 
 import logging
@@ -62,7 +61,6 @@ PROMPTS: Dict[str, BasePromptTemplate] = {
     
 class RAGSystem: 
     """ Main RAG System orchestrator """
-    # TODO: Implement chat feature 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):     
         self.config = config
         self.document_processor = DocumentProcessor(config)
@@ -177,7 +175,6 @@ class RAGSystem:
         
         return chain
 
-    # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
         """ Build the knowledge base i.e index the database from documents """
         try: 
@@ -309,9 +306,6 @@ class RAGSystem:
             
             processing_time = time.time() - start_time
             
-            # Save the current session to disk
-            self.session_store._save_to_disk()
-            
             return Result(
                 response = result["response"],
                 sources = result["rag_context"].sources,
@@ -340,7 +334,6 @@ class RAGSystem:
                 if "response" in chunk:
                     yield chunk["response"]
             
-            self.session_store._save_to_disk()
         except Exception as e:
             logger.error(f"Error streaming chat: {e}")
             yield f"Error: {str(e)}"
@@ -383,3 +376,5 @@ class RAGSystem:
 
     def document_count(self) -> int: 
         return self.vector_store_manager.get_docs_count()
+
+# TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)

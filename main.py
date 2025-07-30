@@ -1,15 +1,11 @@
 import sys
-import warnings
-import logging
 
 from src.config import setup_logging
 from src import RAGConfig, RAGSystem
 from parser import parser
 
+import logging
 logger = logging.getLogger(__name__)
-warnings.filterwarnings('ignore', category=Warning, module='unstructured')
-warnings.filterwarnings('ignore', category=UserWarning, module='resource_tracker')      # TODO: Understand and fix semaphore leaks
-warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 ENABLE_PARSER: bool = True
 
@@ -66,8 +62,11 @@ def main():
             print(result)
 
 def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_streaming: bool = False):
-    """Enhanced interactive chat with LangChain"""
-    
+    """ Enhanced interactive chat with LangChain """
+
+    # Load the chats from the disk
+    rag_system.session_store._load_from_disk()
+
     if session_id:
         rag_system.current_session_id = session_id
         print(f"📱 Using session: {session_id}")
@@ -102,6 +101,9 @@ def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_strea
                 command = user_input.lower()
                 
                 if command == '/quit' or command == '/exit':
+                    # Save the session
+                    rag_system.session_store._save_to_disk()
+
                     print("👋 Goodbye!")
                     break
                 elif command == '/help':
@@ -205,7 +207,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         sys.exit(1)
-
-
-# TODO: Indexing is painfully slow, diagnose the problem and fix it. 
-# TODO: Enable multiprocessing and mulithreading.
