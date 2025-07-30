@@ -24,7 +24,7 @@ class RAGSystem:
         self.document_processor = DocumentProcessor(config)
         self.vector_store_manager = VectorStoreManager(config)
 
-        # Make a uuid for current chat session
+        # Make an uuid for current chat session
         self.current_session_id = str(uuid.uuid4())
         self.session_store = SessionStore()
         
@@ -84,7 +84,6 @@ class RAGSystem:
             test_response = llm.invoke("Hello")
             if not test_response:
                 raise ValueError("Empty response from LLM on test prompt.")
-                return None
 
             logger.info(f"LLM initialized successfully with model: {model_name}")
             return llm 
@@ -126,7 +125,7 @@ class RAGSystem:
         return ("\n" + "=" * 100 + "\n").join(formatted_docs)
 
     def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
-        """ Build the knowledge base i.e index the database from documents """
+        """ Build the knowledge base i.e. index the database from documents """
         try: 
             start_time = time.perf_counter()
             logger.info("Building knowledge base...")
@@ -191,7 +190,7 @@ class RAGSystem:
     # IDEATE: How will this chat system work?
     # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
     # Optimal approach would be to chat query the entire corpus once and store that context into the conversation (Make a conversation 
-    # class) and use that to answer the follow up questions. 
+    # class) and use that to answer the follow-up questions.
     def chat(self, message: str, session_id: Optional[str] = None) -> Result:
         """ Process a chat message with conversation history """
         try:
@@ -265,7 +264,7 @@ class RAGSystem:
         if session_id is None:
             session_id = self.current_session_id
         
-        self.session_store.clear_session(session_id)
+        self.session_store.delete_session(session_id)
         logger.info(f"Cleared chat history for session: {session_id}")
 
     def create_new_session(self) -> str:

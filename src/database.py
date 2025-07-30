@@ -25,7 +25,7 @@ class VectorStoreManager:
     
         self._db = self.load_vector_store()
 
-    def load_vector_store(self) -> Chroma:
+    def load_vector_store(self) -> Chroma | None:
         """ Get or create ChromaDB client with proper settings """
         try: 
             if not Path(self.database_path).exists():
@@ -123,7 +123,6 @@ class VectorStoreManager:
             else: 
                 # If force_rebuild enabled just build everything from scratch
                 new_chunks = chunks
-                new_ids = [chunk.metadata["id"] for chunk in chunks]
             
             if len(new_chunks):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")
@@ -138,7 +137,7 @@ class VectorStoreManager:
             logger.error(f"Error adding documents: {e}")
             return False
     
-    def get_docs_count(self) -> int: 
+    def get_docs_count(self) -> int | None:
         try: 
             return len(self._db.get(include=[]))
         except Exception as e: 
