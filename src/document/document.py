@@ -45,7 +45,7 @@ class DocumentProcessor:
         self.cache_path = Path(self.config.corpus_path) / '.cache.json'
     
     def _get_file_hash(self, file_path: Path) -> str:
-        """OPTIMIZATION: Get the hash of file content by reading in chunks."""
+        """ OPTIMIZATION: Get the hash of file content by reading in chunks """
         h = hashlib.md5()
         with file_path.open("rb") as f:
             while chunk := f.read(8192):

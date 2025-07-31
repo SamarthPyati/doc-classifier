@@ -2,12 +2,13 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, Tuple
 
-from .constants import (
+from src.constants import (
     EmbeddingProvider,
     EmbeddingModelHuggingFace,
     LLMModel,
     LLMModelProvider, 
-    ChunkerType
+    ChunkerType, 
+    VectorStoreProvider
 )
 
 class DocProcessorSettings(BaseModel):

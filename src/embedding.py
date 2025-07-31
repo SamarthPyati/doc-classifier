@@ -2,7 +2,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
-from .config import DEFAULT_RAG_CONFIG, RAGConfig, EmbeddingProvider
+from .config import DEFAULT_RAG_CONFIG, RAGConfig
+from .constants import EmbeddingProvider
 
 import functools
 import logging

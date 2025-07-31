@@ -3,7 +3,7 @@ from langchain_experimental.text_splitter import SemanticChunker
 
 from src.embedding import Embeddings
 from src.config.config import RAGConfig
-from src.config.constants import ChunkerType
+from src.constants import ChunkerType
 
 import logging
 logger = logging.getLogger(__name__)

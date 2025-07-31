@@ -5,7 +5,8 @@ from langchain_core.messages import HumanMessage
 from .database import VectorStoreManager
 from .document import DocumentProcessor
 from .chains import ChainFactory
-from .config import RAGConfig, DEFAULT_RAG_CONFIG, LLMModel
+from .config import RAGConfig, DEFAULT_RAG_CONFIG
+from .constants import LLMModel
 from .models import RAGContext, Result
 from .session import SessionStore
 

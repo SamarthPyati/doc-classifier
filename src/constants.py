@@ -25,3 +25,8 @@ class EmbeddingModelHuggingFace(str, Enum):
 class ChunkerType(str, Enum): 
     SEMANTIC_CHUNKER = "semantic"
     RECURSIVE_CHARACTER_TEXT_SPLITTER = "recursive"
+
+class VectorStoreProvider(str, Enum):
+    """ Supported vector store providers """
+    CHROMA = "chroma"
+    PINECONE = "pinecone"
