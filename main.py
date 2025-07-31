@@ -7,7 +7,7 @@ from parser import parser
 import logging
 logger = logging.getLogger(__name__)
 
-ENABLE_PARSER: bool = False
+ENABLE_PARSER: bool = True
 
 def main(): 
     setup_logging()

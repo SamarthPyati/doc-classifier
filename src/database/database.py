@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-def calculate_chunk_ids(self, chunks: List[Document]) -> None:
+def calculate_chunk_ids(chunks: List[Document]) -> None:
     """ Assigns unique chunk IDs to each Document in the provided list based on their source and page metadata """
     # This will create IDs like "procurement.pdf:6:2"
     # ID Structure Format => "Page Source:Page Number:Chunk Index"
