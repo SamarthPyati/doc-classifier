@@ -5,7 +5,7 @@ from .config import (
 
 from .logging_config import setup_logging
 
-__all__ = (
+__all__ = [
     "LLMModel", 
     "LLMModelProvider", 
     "EmbeddingProvider", 
@@ -14,4 +14,4 @@ __all__ = (
     "setup_logging", 
     "DEFAULT_RAG_CONFIG", 
     "ChunkerType" 
-)
+]

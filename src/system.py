@@ -23,7 +23,7 @@ class RAGSystem:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):     
         self.config = config
         self.document_processor = DocumentProcessor(config)
-        self.vector_store_manager = VectorStoreManager(config)
+        self.vector_store = VectorStoreManager(config).get_vector_store()
 
         # Make an uuid for current chat session
         self.current_session_id = str(uuid.uuid4())
@@ -50,7 +50,7 @@ class RAGSystem:
 
     def _get_db(self):
         if self._db is None:
-            self._db = self.vector_store_manager.load_vector_store()
+            self._db = self.vector_store.load_vector_store()
         return self._db
 
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
@@ -98,7 +98,7 @@ class RAGSystem:
     def _retrieve_context(self, query: str) -> RAGContext:
         """ Retrieve relevant documents using vector search """
         try:
-            results = self.vector_store_manager.similarity_search(query, self._get_db())
+            results = self.vector_store.similarity_search(query)
             
             if not results:
                 return RAGContext()
@@ -140,7 +140,7 @@ class RAGSystem:
             # Split documents into chunks
             chunks = self.document_processor.split_documents(documents)
 
-            success = self.vector_store_manager.add_documents(chunks, force_rebuild=force_rebuild)
+            success = self.vector_store.add_documents(chunks, force_rebuild=force_rebuild)
             
             if success:
                 build_time = time.perf_counter() - start_time
@@ -280,6 +280,6 @@ class RAGSystem:
         return self.session_store.list_sessions()
 
     def document_count(self) -> int: 
-        return self.vector_store_manager.get_docs_count()
+        return self.vector_store.get_docs_count()
 
 # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)

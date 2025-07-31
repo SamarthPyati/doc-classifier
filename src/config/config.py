@@ -44,6 +44,8 @@ class EmbeddingSettings(BaseModel):
     batch_size: int = 1000
 class DatabaseSettings(BaseModel):
     """ Settings for the vector database """
+    provider: VectorStoreProvider = VectorStoreProvider.CHROMA
+    
     # Chroma db path to store locally
     path: str = Field(default="chroma_db", alias="database_path")
     collection_name: str = "rag_documents"
