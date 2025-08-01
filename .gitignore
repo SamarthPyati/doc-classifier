@@ -2,9 +2,11 @@ __pycache__/
 chroma*/
 corpus/
 logs/
-.env
+.ruff_cache/
 .idea/
+
 .DS_Store
+.env
 
 *sessions.json
 

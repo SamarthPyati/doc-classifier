@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory, BaseMessage
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+from langchain_core.messages.base import BaseMessage
 from typing import List, Dict
 
 # TODO: Store the session store in database instead of file 

@@ -1,6 +1,7 @@
 from langchain_ollama import OllamaLLM
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig 
 
 from .database import VectorStoreManager
 from .document import DocumentProcessor
@@ -29,7 +30,6 @@ class RAGSystem:
         self.current_session_id = str(uuid.uuid4())
         self.session_store = SessionStore()
         
-        self._db = None
         self._llm = None
 
         chain_factory = ChainFactory(
@@ -47,11 +47,6 @@ class RAGSystem:
         if self._llm is None:
             self._llm = self._initialize_llm()
         return self._llm
-
-    def _get_db(self):
-        if self._db is None:
-            self._db = self.vector_store.load_vector_store()
-        return self._db
 
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """ Initialize the LLM based on configuration """
@@ -206,7 +201,7 @@ class RAGSystem:
             # Run the conversational chain
             result = self.conversational_chain.invoke(
                 {"question": message},
-                config=config
+                config=RunnableConfig(*config)
             )
             
             processing_time = time.time() - start_time
@@ -234,7 +229,7 @@ class RAGSystem:
         try:
             for chunk in self.conversational_chain.stream(
                 {"question": message}, 
-                config=config
+                config=RunnableConfig(*config)
             ):
                 if "response" in chunk:
                     yield chunk["response"]
@@ -280,6 +275,6 @@ class RAGSystem:
         return self.session_store.list_sessions()
 
     def document_count(self) -> int: 
-        return self.vector_store.get_docs_count()
+        return self.vector_store.count()
 
 # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)

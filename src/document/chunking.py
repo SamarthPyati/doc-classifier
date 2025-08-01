@@ -34,12 +34,12 @@ def get_chunker(config: RAGConfig, embeddings: Embeddings) -> 'TextSplitter':
             "chunk_size": config.DocProcessor.chunk_size,
             "chunk_overlap": config.DocProcessor.chunk_overlap,
             "separators": ['\n\n', '\n', '.', '?', '!', ' ', ''],
-        })
+        }) # type: ignore
     elif chunker_type == ChunkerType.SEMANTIC_CHUNKER:
         logger.info("Using Semantic Chunker.")
         chunker_params.update({
             "embeddings": embeddings.get_embedding_model(),
             "breakpoint_threshold_type": "standard_deviation",
-        })
+        }) # type: ignore
 
     return chunker_class(**chunker_params)

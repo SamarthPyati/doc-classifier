@@ -51,7 +51,7 @@ class ChromaManager(VectorStoreInterface):
         self.collection_name = self.config.Database.collection_name
         self.embedding_function = Embeddings(config).get_embedding_model()    
 
-        self._db = self._load_or_create_db()
+        self._db: Chroma | None = self._load_or_create_db()
 
     def _load_or_create_db(self) -> Chroma | None:
         """ Get or create ChromaDB client with proper settings """

@@ -17,7 +17,7 @@ class Result:
     confidence: float   = 0.0
     num_sources: int    = 0
     processing_time: float = 0.0
-    session_id: str = None
+    session_id: str = "Null"
 
     def __repr__(self):
         return (f"Response: {self.response}\n"

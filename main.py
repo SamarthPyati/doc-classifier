@@ -61,7 +61,7 @@ def main():
             result = rag_system.query(query)
             print(result)
 
-def interactive_chat(rag_system: RAGSystem, session_id: str = None, enable_streaming: bool = False):
+def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enable_streaming: bool = False):
     """ Enhanced interactive chat with LangChain """
 
     # Load the chats from the disk
