@@ -44,11 +44,11 @@ class EmbeddingSettings(BaseModel):
     batch_size: int = 1000
 class DatabaseSettings(BaseModel):
     """ Settings for the vector database """
-    provider: VectorStoreProvider = VectorStoreProvider.CHROMA
-    
+    provider: VectorStoreProvider = VectorStoreProvider.PINECONE
+
     # Chroma db path to store locally
     path: str = Field(default="chroma_db", alias="database_path")
-    collection_name: str = "rag_documents"
+    collection_name: str = "rag-index"
 
     # Max results to return after similarity search
     max_results: int = 5

@@ -11,6 +11,7 @@ class LLMModel(str, Enum):
 
 class LLMModelProvider(str, Enum):
     GOOGLE = "google_genai"
+    OLLAMA = "ollama"
 
 class EmbeddingProvider(str, Enum):
     HUGGINGFACE = "HuggingFace"

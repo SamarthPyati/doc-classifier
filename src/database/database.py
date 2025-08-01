@@ -1,5 +1,7 @@
 from langchain.schema import Document
 from langchain_chroma import Chroma
+from langchain_pinecone import PineconeVectorStore
+from pinecone import Pinecone, ServerlessSpec
 from chromadb.config import Settings as ChromaSettings
 
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
@@ -133,29 +135,20 @@ class ChromaManager(VectorStoreInterface):
     def similarity_search(self, query: str) -> List[Tuple[Document, float]]:
         """ Perform similarity search with a query """
         try:
-            if not self._db:
-                logger.error("Database was not properly initialized")
-                return []
-
             # Perform similarity search
             results = self._db.similarity_search_with_relevance_scores(
                 query, 
-                k=self.config.Database.max_results 
+                k=self.config.Database.max_results,  
+                score_threshold=self.config.Database.similarity_threshold
             )
-
-            # Filter by threshold and sort by relevance
-            filtered_results = [
-                (doc, score) for doc, score in results 
-                if score >= self.config.Database.similarity_threshold
-            ]
+            # Sort by relevance score
+            results.sort(key=lambda x: x[1], reverse=True)
             
-            filtered_results.sort(key=lambda x: x[1], reverse=True)
-            
-            logger.info(f"Found {len(filtered_results)} relevant documents for query: \"{query[:50]}...\"")
-            return filtered_results
+            logger.info(f"Found {len(results)} relevant documents for query: \"{query[:50]}...\"")
+            return results
             
         except Exception as e:
-            logger.error(f"Error performing similarity search: {e}")
+            logger.error(f"Error performing similarity search: {e}", exc_info=True)
             return []
 
     def count(self) -> int: 
@@ -173,6 +166,76 @@ class ChromaManager(VectorStoreInterface):
             logger.error(f"Error resetting database: {e}")
             return False
 
+class PineconeManager(VectorStoreInterface):
+    def __init__(self, config: RAGConfig):
+        self.config = config
+        self.embedding_function = Embeddings(config).get_embedding_model()
+        
+        self.pinecone_client = Pinecone()
+
+        self.index_name = self.config.Database.collection_name
+        self._db = self._get_or_create_index()
+
+    def _get_or_create_index(self) -> PineconeVectorStore | None:
+        try: 
+            if not self.pinecone_client.has_index(self.index_name):
+                logger.warning(f"Pinecone index '{self.index_name}' not found. Creating...")
+                embedding_dim = 768 # TODO: Make a mapping of embedding_model with its dimension
+
+                self.pinecone_client.create_index(
+                    name=self.index_name,
+                    dimension=embedding_dim,
+                    metric="cosine",
+                    spec=ServerlessSpec(
+                        cloud='aws', 
+                        region='us-east-1'
+                    )
+                )
+
+            index = self.pinecone_client.Index(self.index_name)
+            return PineconeVectorStore(index, self.embedding_function, "page_content")
+        
+        except Exception as e:
+            logger.error(f"Error loading vector store: {e}")
+            # Try to reset and return None
+            self.reset()
+            return None
+
+    def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
+        if force_rebuild:
+            self.reset()
+        logger.info(f"Adding/updating {len(chunks)} chunks in Pinecone index '{self.index_name}'...")
+        self._db.add_documents(chunks, batch_size=100)
+        return True
+    
+    def count(self) -> int: 
+        return self._db._collection.count()
+
+    def similarity_search(self, query: str) -> List[Tuple[Document, float]]:
+        """ Perform similarity search with a query """
+        try:
+            # Perform similarity search
+            results = self._db.similarity_search_with_relevance_scores(
+                query, 
+                k=self.config.Database.max_results,  
+                score_threshold=self.config.Database.similarity_threshold
+            )
+            # Sort by relevance score
+            results.sort(key=lambda x: x[1], reverse=True)
+            
+            logger.info(f"Found {len(results)} relevant documents for query: \"{query[:50]}...\"")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error performing similarity search: {e}", exc_info=True)
+            return []
+
+    def reset(self) -> bool:
+        logger.warning(f"Deleting Pinecone index '{self.index_name}'...")
+        if self.pinecone_client.has_index(self.index_name):
+            self.pinecone_client.delete_index(self.index_name)
+        self._db = self._get_or_create_index()
+        return True
 
 class VectorStoreManager:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
@@ -189,6 +252,8 @@ class VectorStoreManager:
         match provider: 
             case VectorStoreProvider.CHROMA: 
                 return ChromaManager(self.config)
+            case VectorStoreProvider.PINECONE: 
+                return PineconeManager(self.config)
             case _: 
                 raise ValueError(f"Unsupported vector store provider: {provider}")
 
