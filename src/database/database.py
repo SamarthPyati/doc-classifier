@@ -129,7 +129,7 @@ class ChromaManager(VectorStoreInterface):
                 return True
 
         except Exception as e:
-            logger.error(f"Error adding documents: {e}")
+            logger.error(f"Error adding documents: {e}", exc_info=True)
             return False
 
     def similarity_search(self, query: str) -> List[Tuple[Document, float]]:

@@ -48,6 +48,6 @@ def parser(config: RAGConfig):
     db_parser = subparsers.add_parser("db", help="Manage database.", formatter_class=formatter)
     db_group = db_parser.add_mutually_exclusive_group(required=True)
     db_group.add_argument("--peek", type=int, help="Show first 'n' documents in database.", default=10)
-    db_group.add_argument("--count", type="store_true", help="Returns the count of entires in database.")
+    db_group.add_argument("--count", action="store_true", help="Returns the count of entires in database.")
 
     return parser.parse_args()
