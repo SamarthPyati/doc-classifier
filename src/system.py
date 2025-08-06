@@ -3,7 +3,7 @@ from langchain_core.runnables import RunnableConfig
 
 from .database import VectorStoreManager
 from .document import DocumentProcessor
-from .chains import ChainFactory
+from .llm.chains import ChainFactory
 from .config import RAGConfig, DEFAULT_RAG_CONFIG
 from .llm import LLMFactory
 from .models import RAGContext, Result
