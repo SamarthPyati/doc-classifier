@@ -1,12 +1,11 @@
-import logging
-
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_ollama import OllamaLLM
 
 from src.config import RAGConfig
+from src.llm import LLMFactory
 
+import logging
 logger = logging.getLogger(__name__)
 
 # Define the desired structured output for the classifier
@@ -17,11 +16,8 @@ class DocumentClassifier:
     """ Uses an LLM to classify document content into predefined categories """
     def __init__(self, config: RAGConfig):
         self.config = config
-
-        self.llm = OllamaLLM(
-            model=config.LLM.model.value, 
-            temperature=0
-        )
+        self.llm_factory = LLMFactory(config) 
+        self.llm = self.llm_factory.get_llm()
         self.parser = PydanticOutputParser(pydantic_object=DocumentCategory) # type: ignore
         self.prompt = self._create_prompt()
 
