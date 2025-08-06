@@ -11,6 +11,7 @@ from .constants import (
     EmbeddingModelHuggingFace, 
     ChunkerType, 
     VectorStoreProvider, 
+    ClassificationMethod
 )
 
 
@@ -25,5 +26,6 @@ __all__ = [
     "EmbeddingProvider", 
     "EmbeddingModelHuggingFace", 
     "ChunkerType", 
-    "VectorStoreProvider"
+    "VectorStoreProvider", 
+    "ClassificationMethod"
 ]

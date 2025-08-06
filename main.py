@@ -18,16 +18,13 @@ def main():
         rag_system = RAGSystem(config)
 
         if args.command == "index":
-            if args.check: 
-                print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
-            else: 
-                config.corpus_path = args.corpus_path
-                print(f"📚 Indexing documents from: {config.corpus_path}")
-                success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
-                if success:
-                    print("✅ Knowledge base built successfully!")
-                else:
-                    print("❌ Failed to build knowledge base.")
+            config.corpus_path = args.corpus_path
+            print(f"📚 Indexing documents from: {config.corpus_path}")
+            success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
+            if success:
+                print("✅ Knowledge base built successfully!")
+            else:
+                print("❌ Failed to build knowledge base.")
 
         elif args.command == "query":
             print(f"\n❓ Query: {args.query}")
@@ -44,6 +41,12 @@ def main():
 
         elif args.command == "sessions":
             manage_sessions(rag_system, args)
+
+        elif args.command == "db": 
+            if args.check: 
+                print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
+            elif args.peek: 
+                rag_system.list_document(args.peek)
     else: 
         rag_system = RAGSystem(config)
         rag_system.build_knowledge_base()

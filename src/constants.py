@@ -1,7 +1,7 @@
 from enum import Enum
 
 class LLMModel(str, Enum):
-    # Ollama models (run locally)
+    # Ollama models (runs locally)
     GEMMA = "gemma3:4b"
     LLAMA = "llama3.2:3b"
 
@@ -33,3 +33,17 @@ class VectorStoreProvider(str, Enum):
     """ Supported vector store providers """
     CHROMA = "chroma"
     PINECONE = "pinecone"
+
+class ClassificationMethod(str, Enum):
+    """ Supported document classification methods """
+    KEYWORD = "keyword"
+    LLM = "llm"
+
+# class DocumentCategories(str, Enum):
+#     """ Document classification categories """
+#     HR = "HR"
+#     PROCUREMENT = "PROCUREMENT"
+#     LEGAL = "LEGAL"
+#     FINANCE = "FINANCE"
+#     TECHNICAL = "TECHNICAL"
+#     GENERAL = "GENERAL"

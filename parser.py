@@ -3,7 +3,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 def parser(config: RAGConfig):
     # Use a formatter that shows default values in help messages 
-    formatter = lambda prog: ArgumentDefaultsHelpFormatter(prog, max_help_position=35)
+    def formatter(prog): 
+        return ArgumentDefaultsHelpFormatter(prog, max_help_position=35)
     
     parser = ArgumentParser(
         prog="Document Classifier",
@@ -42,5 +43,11 @@ def parser(config: RAGConfig):
     session_group.add_argument("--list", action="store_true", help="List all saved session IDs.")
     session_group.add_argument("--history", type=str, metavar="SESSION_ID", help="Show the conversation history for a specific session.")
     session_group.add_argument("--clear", type=str, metavar="SESSION_ID", help="Clear the history for a specific session.")
+
+    # --- Database Subcommand ---
+    db_parser = subparsers.add_parser("db", help="Manage database.", formatter_class=formatter)
+    db_group = db_parser.add_mutually_exclusive_group(required=True)
+    db_group.add_argument("--peek", type=int, help="Show first 'n' documents in database.", default=10)
+    db_group.add_argument("--count", type="store_true", help="Returns the count of entires in database.")
 
     return parser.parse_args()

@@ -2,23 +2,53 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
 
-from src.config import RAGConfig
+from src.config import RAGConfig, DEFAULT_RAG_CONFIG
 from src.llm import LLMFactory
+from src.constants import ClassificationMethod
 
+from abc import ABC, abstractmethod
+from typing import Dict
 import logging
 logger = logging.getLogger(__name__)
 
-# Define the desired structured output for the classifier
-class DocumentCategory(BaseModel):
-    category: str = Field(description="The single most appropriate category for the document.")
+class DocumentClassifierInterface(ABC): 
+    """ Base class for document classifiers """
+    @abstractmethod
+    def classify(self, content_sample: str) -> str: 
+        """ Classify content and return the category as str """
+        pass
 
-class DocumentClassifier:
+class KeywordClassifier(DocumentClassifierInterface): 
+    def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
+        self.keywords = config.DocProcessor.classification_keywords
+
+    def classify(self, content_sample: str): 
+        if not content_sample: 
+            return "GENERAL"
+         
+        content = content_sample.lower()
+        scores: Dict[str, int] = {category : 0 for category, _ in self.keywords.items()}
+        for category, keywords in self.keywords.items(): 
+            for keyword in keywords: 
+                scores[category] += content.count(keyword.lower())
+
+        best_category = max(scores, key=scores.get)
+
+        if all(score == 0 for _, score in scores.items()): 
+            return "GENERAL"
+
+        return best_category
+    
+class LLMClassifier(DocumentClassifierInterface):
     """ Uses an LLM to classify document content into predefined categories """
+    class DocumentCategory(BaseModel):
+        category: str = Field(description="The single most appropriate category for the document.")
+
     def __init__(self, config: RAGConfig):
         self.config = config
         self.llm_factory = LLMFactory(config) 
         self.llm = self.llm_factory.get_llm()
-        self.parser = PydanticOutputParser(pydantic_object=DocumentCategory) # type: ignore
+        self.parser = PydanticOutputParser(pydantic_object=DocumentCategory) # type: ignore  # noqa: F821
         self.prompt = self._create_prompt()
 
     def _create_prompt(self) -> ChatPromptTemplate:
@@ -49,18 +79,34 @@ class DocumentClassifier:
             },
         )
 
-    def classify_content(self, content_sample: str) -> str:
+    def classify(self, text_sample: str) -> str:
         """
         Classifies the given text sample and returns the category name 
         """
-        if not content_sample:
-            return "General"
+        if not text_sample:
+            return "GENERAL"
             
         try:
             chain = self.prompt | self.llm | self.parser
-            result = chain.invoke({"text_sample": content_sample})
+            result = chain.invoke({"text_sample": text_sample})
             return result.category
         except Exception as e:
             logger.error(f"Error in document classification: {e}")
             # Fallback to a default category on error
-            return "General"
+            return "GENERAL"
+
+
+def get_classifier(config: RAGConfig) -> DocumentClassifierInterface:
+    """
+    Factory function that returns the appropriate classifier instance
+    based on the application configuration.
+    """
+    method = config.DocProcessor.classification_method
+    logger.info(f"Selected classification method: {method.value}")
+
+    if method == ClassificationMethod.KEYWORD:
+        return KeywordClassifier(config)
+    elif method == ClassificationMethod.LLM:
+        return LLMClassifier(config)
+    else:
+        raise ValueError(f"Unsupported classification method: {method}")

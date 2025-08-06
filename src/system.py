@@ -154,7 +154,7 @@ class RAGSystem:
             start_time = time.time()
             
             # Configure the runnable with session
-            config = {"configurable": {"session_id": session_id}}
+            config = RunnableConfig({"configurable": {"session_id": session_id}})
             
             # Run the conversational chain
             result = self.conversational_chain.invoke(
@@ -234,5 +234,9 @@ class RAGSystem:
 
     def document_count(self) -> int: 
         return self.vector_store.count()
+    
+    def list_document(self, n: int) -> None:
+        self.vector_store.peek(n) 
+
 
 # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)

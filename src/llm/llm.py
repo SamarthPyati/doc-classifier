@@ -38,13 +38,12 @@ class LLMFactory:
 
             logger.info(f"LLM initialized successfully with model: {model}")
             return llm  
-
         except Exception as e:
             error_message = (
                 f"Failed to initialize LLM '{model}' with provider '{provider}'. "
                 f"Please check your configuration, API keys, and ensure the model service is running. Original error: {e}"
             )
-            logger.error(error_message, exc_info=True)
+            logger.error(error_message, exc_info=False)
             return None
 
     def _create_ollama_llm(self) -> OllamaLLM: 

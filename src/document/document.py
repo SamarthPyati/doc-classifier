@@ -3,7 +3,7 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader, 
     UnstructuredFileLoader, 
 )
-
+ 
 import json
 import hashlib
 from pathlib import Path
@@ -13,7 +13,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
 from src.embedding import Embeddings
 from src.document.chunking import get_chunker
-from src.document.classification import DocumentClassifier
+from src.document.classification import get_classifier
 
 import logging
 logger = logging.getLogger(__name__)
@@ -41,10 +41,10 @@ def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG)
         #  Classification of file 
         category = "Unclassified"
         if config.DocProcessor.enable_classification: 
-            classifier = DocumentClassifier(config)
+            classifier = get_classifier(config)
             # Take a sample text for classification
             content = '\n'.join([doc.page_content for doc in docs[:3]])[:4000]
-            category = classifier.classify_content(content_sample=content)
+            category = classifier.classify(content_sample=content)
             logger.info(f"Classified '{Path(file_path).name}' as: {category}")
 
         # Add file type in metadata
@@ -53,7 +53,7 @@ def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG)
             doc.metadata["file_category"] = category
         return docs
     except Exception as e:
-        logger.error(f"Error loading file {file_path}: {e}")
+        logger.error(f"Error loading file {file_path}: {e}", exc_info=True)
         return []
 
 class DocumentProcessor: 
@@ -96,7 +96,7 @@ class DocumentProcessor:
         ]
         
         # Faster loading with multiprocessing 
-        with ProcessPoolExecutor(max_workers=1) as executor: 
+        with ProcessPoolExecutor(max_workers=8) as executor: 
             future_to_file = {}
             for file_path in files_to_process: 
                 file_id = str(file_path)

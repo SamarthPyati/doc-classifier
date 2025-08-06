@@ -154,6 +154,12 @@ class ChromaManager(VectorStoreInterface):
     def count(self) -> int: 
         return self._db._collection.count()
 
+    def peek(self, n: int): 
+        """ Helper function to peek into database, just for testing purposes """
+        docs = self._db._collection.peek(n)["metadatas"]
+        for doc in docs:
+            print(doc["source"], " -> ", doc["file_category"])
+
     def reset(self) -> bool:
         """ Reset/clear the entire database """
         try:
@@ -210,6 +216,11 @@ class PineconeManager(VectorStoreInterface):
     
     def count(self) -> int: 
         return self._db._collection.count()
+
+    def peek(self, n: int): 
+        docs = self._db._collection.peek(n)["metadatas"]
+        for doc in docs:
+            print(doc["source"], " -> ", doc["file_category"])
 
     def similarity_search(self, query: str) -> List[Tuple[Document, float]]:
         """ Perform similarity search with a query """

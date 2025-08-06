@@ -24,3 +24,8 @@ class VectorStoreInterface(ABC):
     def reset(self) -> bool:
         """Resets the entire vector store."""
         pass
+
+    @abstractmethod
+    def peek(self, n: int) -> None: 
+        """ Helper function to peek into database, just for testing purposes """
+        pass 

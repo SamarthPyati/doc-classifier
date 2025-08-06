@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Dict, List
 
 from src.constants import (
     EmbeddingProvider,
@@ -8,7 +8,8 @@ from src.constants import (
     LLMModel,
     LLMModelProvider, 
     ChunkerType, 
-    VectorStoreProvider
+    VectorStoreProvider, 
+    ClassificationMethod
 )
 
 class DocProcessorSettings(BaseModel):
@@ -19,7 +20,7 @@ class DocProcessorSettings(BaseModel):
     # Chunk size to split the document in (Makes the model get precise context to answer better)
     chunk_size: int = 400
     chunk_overlap: int = 0
-    
+
     # PDF specific settings
     pdf_extract_images: bool = False
     pdf_table_structure_infer_mode: Literal['csv', 'markdown', 'html', None] = 'csv'
@@ -29,11 +30,21 @@ class DocProcessorSettings(BaseModel):
 
     # Settings for classification 
     enable_classification: bool = True
-    classification_categories: Tuple[str, ...] = ("HR", "Procurement", "Legal", "Finance", "Technical", "General")
-    
-    # Load documents lazily into a iterator
-    lazy_loading: bool = True
+    classification_method: ClassificationMethod = ClassificationMethod.KEYWORD
 
+    # For Keyword classifier 
+    classification_keywords: Dict[str, List[str]] = {
+        "HR": ["human resources", "employee", "recruitment", "onboarding", "payroll", "benefits"],
+        "PROCUREMENT": ["procurement", "tender", "vendor", "supplier", "purchase order", "invoice"],
+        "LEGAL": ["agreement", "contract", "legal", "compliance", "terms and conditions", "nda"],
+        "FINANCE": ["finance", "budget", "audit", "financial statement", "tax", "revenue"],
+        "TECHNICAL": ["technical specification", "api", "software", "hardware", "architecture", "database"],
+        "GENERAL": [] # A fallback category
+    }
+
+    # For llm classifier
+    classification_categories: List[str] = list(classification_keywords.keys())
+    
 class EmbeddingSettings(BaseModel):
     """ Settings for text embedding models and providers """
     provider: EmbeddingProvider = Field(default=EmbeddingProvider.GOOGLE, alias="embedding_provider")
