@@ -67,8 +67,8 @@ class DatabaseSettings(BaseModel):
 
 class LLMSettings(BaseModel):
     """ Settings for the Large Language Model which responds to chat and query """
-    model: LLMModel = Field(default=LLMModel.LLAMA, alias="llm_model")
-    provider: LLMModelProvider = Field(default=LLMModelProvider.OLLAMA, alias="llm_provider")
+    model: LLMModel = Field(default=LLMModel.GEMINI_FLASH_LITE_2_0, alias="llm_model")
+    provider: LLMModelProvider = Field(default=LLMModelProvider.GOOGLE, alias="llm_provider")
 
     # LLM Hyperparams
     temperature: float = Field(default=0.1, ge=0.0, le=2.0)

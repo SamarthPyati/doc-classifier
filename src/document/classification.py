@@ -22,22 +22,24 @@ class DocumentClassifier:
         self.prompt = self._create_prompt()
 
     def _create_prompt(self) -> ChatPromptTemplate:
-        """ Creates the prompt template for the classification task """
+        """ Creates a prompt template for the classification task """
         categories = self.config.DocProcessor.classification_categories
         
         prompt_template = """
-        You are an expert document classifier. Your task is to analyze the following text content and assign it to ONE of the predefined categories.
+        You are an expert document classifier. Your task is to analyze the text sample provided and assign it to ONE of the following categories.
+        You must respond in the requested JSON format.
 
         Available Categories:
         {categories}
-
-        Review the text sample below and determine the single best category.
-        {format_instructions}
 
         Text Sample:
         ---
         {text_sample}
         ---
+
+        Based on the text, what is the single best category?
+
+        {format_instructions}
         """
         return ChatPromptTemplate.from_template(
             template=prompt_template,
@@ -59,6 +61,6 @@ class DocumentClassifier:
             result = chain.invoke({"text_sample": content_sample})
             return result.category
         except Exception as e:
-            logger.error(f"Error in document classification: {e}", exc_info=True)
+            logger.error(f"Error in document classification: {e}")
             # Fallback to a default category on error
             return "General"

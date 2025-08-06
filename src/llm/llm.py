@@ -1,5 +1,7 @@
-from src.constants import LLMModelProvider, LLMModel
+from src.constants import LLMModelProvider
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
+
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import OllamaLLM
 
@@ -9,44 +11,55 @@ logger = logging.getLogger(__name__)
 class LLMFactory: 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.config = config
-        self.provider = self.config.LLM.provider
-        self.model = self.config.LLM.model.value
 
-    def get_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
+    def get_llm(self) -> BaseChatModel | None:
         """ Initialize the LLM based on configuration """
+        
+        provider = self.config.LLM.provider
+        model = self.config.LLM.model.value
+        logger.info(f"Initializing LLM with provider: {provider} and model: {model}")
+
         try:
-            match self.provider: 
-                case LLMModelProvider.GOOGLE: 
-                    llm = ChatGoogleGenerativeAI(
-                        model=self.model, 
-                        temperature=self.config.LLM.temperature,
-                        top_p=self.config.LLM.top_p,
-                    )
-                case LLMModelProvider.OLLAMA:  
-                    try: 
-                        llm = OllamaLLM(
-                            model=self.model,
-                            num_thread=self.config.LLM.num_threads,
-                            temperature=self.config.LLM.temperature,
-                            num_ctx=self.config.LLM.ctx_window_size,
-                            top_p=self.config.LLM.top_p,
-                            verbose=False
-                        )
-                    except Exception as e:
-                        logger.error(f"Ensure that Ollama is running and the model is pulled. Error: {e}")
-                        return None
-                case _:     
-                    logger.warning(f"Invalid LLM model '{self.model}'. Choose from: {', '.join(LLMModel._member_names_)}")
-                    return None
+            # Registry based model 
+            provider_registry = {
+                LLMModelProvider.GOOGLE: self._create_google_llm, 
+                LLMModelProvider.OLLAMA: self._create_ollama_llm
+            }   
+
+            llm_creator_f = provider_registry.get(provider)
+            if not llm_creator_f: 
+                logger.error(f"Unsupported LLM provider configured: {provider.value}")
+                return None
+            
+            llm = llm_creator_f()
 
             # Test the LLM connection
-            test_response = llm.invoke("Hello")
-            if not test_response:
-                raise ValueError("Empty response from LLM on test prompt.")
+            llm.invoke("Hello")
 
-            logger.info(f"LLM initialized successfully with model: {self.model}")
-            return llm 
+            logger.info(f"LLM initialized successfully with model: {model}")
+            return llm  
 
         except Exception as e:
-            logger.error(f"Error initializing LLM: {e}")
+            error_message = (
+                f"Failed to initialize LLM '{model}' with provider '{provider}'. "
+                f"Please check your configuration, API keys, and ensure the model service is running. Original error: {e}"
+            )
+            logger.error(error_message, exc_info=True)
             return None
+
+    def _create_ollama_llm(self) -> OllamaLLM: 
+        return OllamaLLM(
+            model=self.config.LLM.model.value, 
+            num_thread=self.config.LLM.num_threads,
+            temperature=self.config.LLM.temperature,
+            num_ctx=self.config.LLM.ctx_window_size,
+            top_p=self.config.LLM.top_p,
+            verbose=False
+        )
+    
+    def _create_google_llm(self) -> ChatGoogleGenerativeAI: 
+        return ChatGoogleGenerativeAI(
+            model=self.config.LLM.model.value,  
+            temperature=self.config.LLM.temperature,
+            top_p=self.config.LLM.top_p,
+        )
