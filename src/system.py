@@ -201,7 +201,7 @@ class RAGSystem:
             # Run the conversational chain
             result = self.conversational_chain.invoke(
                 {"question": message},
-                config=RunnableConfig(*config)
+                config=config
             )
             
             processing_time = time.time() - start_time
@@ -216,7 +216,7 @@ class RAGSystem:
             )
             
         except Exception as e:
-            logger.error(f"Error processing chat message: {e}")
+            logger.error(f"Error processing chat message: {e}", exc_info=True)
             return Result(response=f"Error processing message: {str(e)}")
 
     def stream_chat(self, message: str, session_id: Optional[str] = None):
@@ -224,12 +224,12 @@ class RAGSystem:
         if session_id is None:
             session_id = self.current_session_id
         
-        config = {"configurable": {"session_id": session_id}}
+        config = RunnableConfig({"configurable": {"session_id": session_id}})
         
         try:
             for chunk in self.conversational_chain.stream(
                 {"question": message}, 
-                config=RunnableConfig(*config)
+                config=config
             ):
                 if "response" in chunk:
                     yield chunk["response"]

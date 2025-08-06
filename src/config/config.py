@@ -44,7 +44,7 @@ class EmbeddingSettings(BaseModel):
     batch_size: int = 1000
 class DatabaseSettings(BaseModel):
     """ Settings for the vector database """
-    provider: VectorStoreProvider = VectorStoreProvider.PINECONE
+    provider: VectorStoreProvider = VectorStoreProvider.CHROMA
 
     # Chroma db path to store locally
     path: str = Field(default="chroma_db", alias="database_path")
@@ -63,8 +63,8 @@ class DatabaseSettings(BaseModel):
 
 class LLMSettings(BaseModel):
     """ Settings for the Large Language Model which responds to chat and query """
-    model: LLMModel = Field(default=LLMModel.GEMINI_FLASH, alias="llm_model")
-    provider: LLMModelProvider = Field(default=LLMModelProvider.GOOGLE, alias="llm_provider")
+    model: LLMModel = Field(default=LLMModel.LLAMA, alias="llm_model")
+    provider: LLMModelProvider = Field(default=LLMModelProvider.OLLAMA, alias="llm_provider")
 
     # LLM Hyperparams
     temperature: float = Field(default=0.1, ge=0.0, le=2.0)
