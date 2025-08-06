@@ -17,7 +17,7 @@ class LLMFactory:
         
         provider = self.config.LLM.provider
         model = self.config.LLM.model.value
-        logger.info(f"Initializing LLM with provider: {provider} and model: {model}")
+        logger.info(f"Initializing LLM with provider: {provider.value} and model: {model}")
 
         try:
             # Registry based model 

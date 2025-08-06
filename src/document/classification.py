@@ -48,7 +48,7 @@ class LLMClassifier(DocumentClassifierInterface):
         self.config = config
         self.llm_factory = LLMFactory(config) 
         self.llm = self.llm_factory.get_llm()
-        self.parser = PydanticOutputParser(pydantic_object=LLMClassifier.DocumentCategory) # type: ignore  # noqa: F821
+        self.parser = PydanticOutputParser(pydantic_object=LLMClassifier.LLMClassifier.DocumentCategory) 
         self.prompt = self._create_prompt()
 
     def _create_prompt(self) -> ChatPromptTemplate:

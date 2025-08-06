@@ -43,7 +43,7 @@ def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG)
         if config.DocProcessor.enable_classification: 
             classifier = get_classifier(config)
             # Take a sample text for classification
-            content = '\n'.join([doc.page_content for doc in docs[:3]])[:4000]
+            content = '\n'.join([doc.page_content for doc in docs[:20]])[:8000]
             category = classifier.classify(content_sample=content)
             logger.info(f"Classified '{Path(file_path).name}' as: {category}")
 
