@@ -7,6 +7,7 @@ from .constants import EmbeddingProvider
 
 import functools
 import logging
+
 logger = logging.getLogger(__name__)
 
 def handle_embedding_errors(func): 
@@ -24,14 +25,14 @@ class Embeddings:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):
         self.config = config
         self.embedding_provider = self.config.Embeddings.provider
-        self.embedding_model_huggingface = self.config.Embeddings.huggingface_model.value
-        self.embedding_model_google = self.config.Embeddings.google_model
-        self.embedding_model_openai = self.config.Embeddings.openai_model
+        self.__embedding_model_huggingface = self.config.Embeddings.huggingface_model.value
+        self.__embedding_model_google = self.config.Embeddings.google_model
+        self.__embedding_model_openai = self.config.Embeddings.openai_model
 
     @handle_embedding_errors
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:
         return HuggingFaceEmbeddings(
-            model_name=self.embedding_model_huggingface,
+            model_name=self.__embedding_model_huggingface,
             model_kwargs={'device': device},
             encode_kwargs={'normalize_embeddings': normalize_embeddings}
         )
@@ -39,13 +40,13 @@ class Embeddings:
     @handle_embedding_errors
     def _get_gemini_model(self) -> GoogleGenerativeAIEmbeddings:
         return GoogleGenerativeAIEmbeddings(
-            model=self.embedding_model_google, 
+            model=self.__embedding_model_google, 
         )
 
     @handle_embedding_errors
     def _get_openai_model(self) -> OpenAIEmbeddings:
         return OpenAIEmbeddings(
-            model=self.embedding_model_openai
+            model=self.__embedding_model_openai
         )
 
     def get_embedding_model(self):

@@ -45,19 +45,18 @@ PROMPTS: Dict[str, BasePromptTemplate] = {
     ])
 }
 
-
 class ChainFactory: 
     def __init__(self, llm, retrieve_context_f, format_context_f):
         self.llm = llm
         self.retrieve_context_f = retrieve_context_f       
         self.format_context_f = format_context_f
-    
+
     def create_query_chain(self) -> Runnable:
         """Build LCEL chain for single queries without conversation history"""
         
         chain = (
             RunnablePassthrough()
-            | PROMPTS.get("query") 
+            | PROMPTS["query"]
             | self.llm
             | StrOutputParser()
         )
@@ -86,7 +85,7 @@ class ChainFactory:
         chat_chain = (
             RunnableLambda(prepare_chat_input)
             | RunnableParallel({
-                "response": PROMPTS.get("chat") | self.llm | StrOutputParser(),
+                "response": PROMPTS["chat"] | self.llm | StrOutputParser(),
                 "rag_context": RunnableLambda(lambda x: x["rag_context"])   
             })
         )

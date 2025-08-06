@@ -13,13 +13,16 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
 from src.embedding import Embeddings
 from src.document.chunking import get_chunker
+from src.document.classification import DocumentClassifier
 
 import logging
 logger = logging.getLogger(__name__)
 
-def load_document_worker(file_path: str) -> List[Document]:
+def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG) -> List[Document]:
     """
-    Loads a single document based on its file extension.
+    Loads a single document, classifies it, and adds the category to its metadata.
+    This function is designed to be run in a separate process.
+
     NOTE: This function is designed to be run in a separate process and 
     defined at the top level so it can be pickled by multiprocessing.
     """
@@ -31,9 +34,23 @@ def load_document_worker(file_path: str) -> List[Document]:
             loader = UnstructuredFileLoader(file_path, strategy="fast")
         
         docs = loader.load()
-        
+        if not docs:
+            logger.warning(f"No content loaded from file: {file_path}")
+            return []
+
+        #  Classification of file 
+        category = "Unclassified"
+        if config.DocProcessor.enable_classification: 
+            classifier = DocumentClassifier(config)
+            # Take a sample text for classification
+            content = '\n'.join([doc.page_content for doc in docs[:3]])[:4000]
+            category = classifier.classify_content(content_sample=content)
+            logger.info(f"Classified '{Path(file_path).name}' as: {category}")
+
+        # Add file type in metadata
         for doc in docs:
             doc.metadata["file_type"] = file_ext[1:]
+            doc.metadata["file_category"] = category
         return docs
     except Exception as e:
         logger.error(f"Error loading file {file_path}: {e}")
@@ -79,7 +96,7 @@ class DocumentProcessor:
         ]
         
         # Faster loading with multiprocessing 
-        with ProcessPoolExecutor(max_workers=8) as executor: 
+        with ProcessPoolExecutor(max_workers=1) as executor: 
             future_to_file = {}
             for file_path in files_to_process: 
                 file_id = str(file_path)
@@ -101,11 +118,14 @@ class DocumentProcessor:
                 file_path = future_to_file[future]
                 try:
                     docs = future.result()
+                    if not docs: 
+                        executor.shutdown()
                     documents.extend(docs)
                     logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
                 except Exception as e:
                     logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}", exc_info=True)
                 
+        # Update cache
         self._save_cache(new_cache)
         logger.info(f"Total documents loaded: {len(documents)}")
         return documents
@@ -113,11 +133,9 @@ class DocumentProcessor:
     def split_documents(self, documents: List[Document]) -> List[Document]: 
         """
         Split the documents into chunks.
-        The chunker is created here, just-in-time, to avoid pickling issues.
+        The chunker is created here just-in-time to avoid pickling issues.
         """
         try:    
-            # Embedding model is only needed for chunking, so we don't initialize it as a class param
-            # Also doing this to keep the DocumentProcessor instance pickleable.
             embeddings = Embeddings(self.config)
             chunker = get_chunker(self.config, embeddings)
             

@@ -4,6 +4,7 @@ corpus/
 logs/
 .ruff_cache/
 .idea/
+.vscode/
 
 .DS_Store
 .env

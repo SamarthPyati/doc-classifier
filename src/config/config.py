@@ -26,6 +26,10 @@ class DocProcessorSettings(BaseModel):
     
     # TODO: Add more document types for support
     supported_extensions: Tuple[str, ...] = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
+
+    # Settings for classification 
+    enable_classification: bool = True
+    classification_categories: Tuple[str, ...] = ("HR", "Procurement", "Legal", "Finance", "Technical", "General")
     
     # Load documents lazily into a iterator
     lazy_loading: bool = True

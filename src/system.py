@@ -7,7 +7,7 @@ from .database import VectorStoreManager
 from .document import DocumentProcessor
 from .chains import ChainFactory
 from .config import RAGConfig, DEFAULT_RAG_CONFIG
-from .constants import LLMModel
+from .constants import LLMModelProvider, LLMModel
 from .models import RAGContext, Result
 from .session import SessionStore
 
@@ -41,7 +41,6 @@ class RAGSystem:
         self.query_chain = chain_factory.create_query_chain()
         self.conversational_chain = chain_factory.create_conversational_chain(self.session_store)
 
-
     # Lazy Getters for slow-to-initialize objects
     def _get_llm(self):
         if self._llm is None:
@@ -51,30 +50,32 @@ class RAGSystem:
     def _initialize_llm(self) -> ChatGoogleGenerativeAI | OllamaLLM | None:
         """ Initialize the LLM based on configuration """
         try:
+            model_provider: LLMModelProvider = self.config.LLM.provider
             model_name = self.config.LLM.model.value
             
-            if model_name.strip().startswith("gemini"):
-                llm = ChatGoogleGenerativeAI(
-                    model=model_name, 
-                    temperature=self.config.LLM.temperature,
-                    top_p=self.config.LLM.top_p,
-                )
-            elif model_name.startswith("llama") or model_name.startswith("gemma"):
-                try: 
-                    llm = OllamaLLM(
-                        model=model_name,
-                        num_thread=self.config.LLM.num_threads,
+            match model_provider: 
+                case model_provider.GOOGLE: 
+                    llm = ChatGoogleGenerativeAI(
+                        model=model_name, 
                         temperature=self.config.LLM.temperature,
-                        num_ctx=self.config.LLM.ctx_window_size,
                         top_p=self.config.LLM.top_p,
-                        verbose=False
                     )
-                except Exception as e:
-                    logger.error(f"Ensure that Ollama is running and the model is pulled. Error: {e}")
+                case model_provider.OLLAMA:  
+                    try: 
+                        llm = OllamaLLM(
+                            model=model_name,
+                            num_thread=self.config.LLM.num_threads,
+                            temperature=self.config.LLM.temperature,
+                            num_ctx=self.config.LLM.ctx_window_size,
+                            top_p=self.config.LLM.top_p,
+                            verbose=False
+                        )
+                    except Exception as e:
+                        logger.error(f"Ensure that Ollama is running and the model is pulled. Error: {e}")
+                        return None
+                case _:     
+                    logger.warning(f"Invalid LLM model '{model_name}'. Choose from: {', '.join(LLMModel._member_names_)}")
                     return None
-            else:
-                logger.warning(f"Invalid LLM model '{model_name}'. Choose from: {', '.join(LLMModel._member_names_)}")
-                return None
 
             # Test the LLM connection
             test_response = llm.invoke("Hello")
