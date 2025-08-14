@@ -192,22 +192,26 @@ async def main():
         args = parser(config)
         rag_system = RAGSystem(config)
 
-        match args.command: 
-            case "index":
-                await handle_index_command(rag_system, args)
-
-            case "query":
-                await handle_query_command(rag_system, args)
-
-            case "chat":
-                await interactive_chat(rag_system, args.session, args.stream)
-
-            case "session":
-                handle_session_command(rag_system, args)
-
-            case "db": 
-                handle_db_command(rag_system, args)
-
+        try: 
+            match args.command: 
+                case "index":
+                    await handle_index_command(rag_system, args)
+                case "query":
+                    await handle_query_command(rag_system, args)
+                case "chat":
+                    await interactive_chat(rag_system, args.session, args.stream)
+                case "session":
+                    handle_session_command(rag_system, args)
+                case "db": 
+                    handle_db_command(rag_system, args)
+        finally:
+            # --- Graceful Shutdown ---
+            logger.info("Shutting down application and background tasks.")
+            tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
     else: 
         rag_system = RAGSystem(config)
         rag_system.build_knowledge_base()
