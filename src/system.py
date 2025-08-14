@@ -235,5 +235,4 @@ class RAGSystem:
     def list_document(self, n: int) -> None:
         self.vector_store.peek(n) 
 
-
 # TODO: Automatically detect new document upload and rebuild the knowledge base (try with watchdog and make a filemonitor)

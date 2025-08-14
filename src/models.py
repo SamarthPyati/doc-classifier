@@ -19,6 +19,11 @@ class Result:
     processing_time: float = 0.0
     session_id: str = "Null"
 
+    def __str__(self):
+        return (f"\n📚 Sources: {', '.join(self.sources)}\n"
+                f"🎯 Confidence: {self.confidence:.3f}\n"
+                f"⚡ Processing Time: {self.processing_time:.3f} second(s)\n")
+
     def __repr__(self):
         return (f"Response: {self.response}\n"
                 f"Session ID: {self.session_id}\n"

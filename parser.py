@@ -38,7 +38,7 @@ def parser(config: RAGConfig):
     chat_parser.add_argument("--stream", action="store_true", help="Enable real-time streaming for responses.")
 
     # --- Sessions Command ---
-    session_parser = subparsers.add_parser("sessions", help="Manage chat sessions.", formatter_class=formatter)
+    session_parser = subparsers.add_parser("session", help="Manage chat sessions.", formatter_class=formatter)
     session_group = session_parser.add_mutually_exclusive_group(required=True)
     session_group.add_argument("--list", action="store_true", help="List all saved session IDs.")
     session_group.add_argument("--history", type=str, metavar="SESSION_ID", help="Show the conversation history for a specific session.")
