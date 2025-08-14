@@ -33,6 +33,7 @@ class DocProcessorSettings(BaseModel):
     classification_method: ClassificationMethod = ClassificationMethod.KEYWORD
 
     # For Keyword classifier 
+    # TODO: Figure out a proper way to contain the keyword classification logic 
     classification_keywords: Dict[str, List[str]] = {
         "HR": ["human resources", "employee", "recruitment", "onboarding", "payroll", "benefits"],
         "PROCUREMENT": ["procurement", "tender", "vendor", "supplier", "purchase order", "invoice"],

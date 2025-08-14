@@ -109,7 +109,7 @@ class RAGSystem:
             logger.error(f"Error building knowledge Base: {e}", exc_info=True)
             return False
     
-    def query(self, question: str) -> Result:
+    async def query(self, question: str) -> Result:
         """ Query the RAG system with a question """
         try:    
             start: float = time.perf_counter()
@@ -117,7 +117,7 @@ class RAGSystem:
             context: RAGContext = self._retrieve_context(question)
 
             try:
-                response = self.query_chain.invoke({
+                response = await self.query_chain.ainvoke({
                     'question': question, 
                     'context': self._format_context(context)
                 })
@@ -145,19 +145,17 @@ class RAGSystem:
     # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
     # Optimal approach would be to chat query the entire corpus once and store that context into the conversation (Make a conversation 
     # class) and use that to answer the follow-up questions.
-    def chat(self, message: str, session_id: Optional[str] = None) -> Result:
+    async def chat(self, message: str, session_id: Optional[str] = None) -> Result:
         """ Process a chat message with conversation history """
+        session_id = session_id or self.current_session_id
+        start_time = time.time()
+
         try:
-            if session_id is None:
-                session_id = self.current_session_id
-            
-            start_time = time.time()
-            
             # Configure the runnable with session
             config = RunnableConfig({"configurable": {"session_id": session_id}})
             
             # Run the conversational chain
-            result = self.conversational_chain.invoke(
+            result = await self.conversational_chain.ainvoke(
                 {"question": message},
                 config=config
             )
@@ -177,15 +175,14 @@ class RAGSystem:
             logger.error(f"Error processing chat message: {e}", exc_info=True)
             return Result(response=f"Error processing message: {str(e)}")
 
-    def stream_chat(self, message: str, session_id: Optional[str] = None):
+    async def stream_chat(self, message: str, session_id: Optional[str] = None):
         """ Stream chat response for real-time interaction """
-        if session_id is None:
-            session_id = self.current_session_id
+        session_id = session_id or self.current_session_id
         
         config = RunnableConfig({"configurable": {"session_id": session_id}})
         
         try:
-            for chunk in self.conversational_chain.stream(
+            async for chunk in self.conversational_chain.astream(
                 {"question": message}, 
                 config=config
             ):

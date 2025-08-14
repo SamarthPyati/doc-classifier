@@ -1,4 +1,6 @@
 import sys
+import asyncio
+from typing import Any
 
 from src.config import setup_logging
 from src import RAGConfig, RAGSystem
@@ -9,7 +11,38 @@ logger = logging.getLogger(__name__)
 
 ENABLE_PARSER: bool = True
 
-def main(): 
+async def handle_index_command(system: RAGSystem, args: Any) -> None:
+    """Handles the 'index' command by running the blocking function in an executor."""
+    print(f"📚 Indexing documents from: {args.corpus_path}")
+    loop = asyncio.get_running_loop()
+    try:
+        # Run the synchronous, CPU/IO-bound function in a separate thread
+        # to avoid blocking the asyncio event loop.
+        success = await loop.run_in_executor(
+            None, system.build_knowledge_base, args.overwrite
+        )
+        if success:
+            print("✅ Knowledge base built successfully!")
+        else:
+            print("❌ Failed to build knowledge base.")
+    except Exception as e:
+        logger.error(f"An error occurred during indexing: {e}", exc_info=True)
+        print("❌ An unexpected error occurred during indexing. Check logs for details.")
+
+async def handle_query_command(system: RAGSystem, args: Any) -> None: 
+    """Handles the 'query' command asynchronously."""
+    print(f"\n❓ Query: {args.query}")
+    print("=" * 100)
+    print("🤔 Thinking...", end="\r", flush=True)
+    result = await system.query(args.query)
+    sys.stdout.write("\033[K")  # Clear the "Thinking..." line
+    print(f"🤖 Response: {result.response}")
+    if result.sources:
+        print(f"\n📚 Sources: {', '.join(result.sources)}")
+        print(f"🎯 Confidence: {result.confidence:.2f}")
+        print(f"⚡ Time: {result.processing_time:.2f}s")
+
+async def main(): 
     setup_logging()
     config = RAGConfig()    
 
@@ -17,36 +50,24 @@ def main():
         args = parser(config)
         rag_system = RAGSystem(config)
 
-        if args.command == "index":
-            config.corpus_path = args.corpus_path
-            print(f"📚 Indexing documents from: {config.corpus_path}")
-            success = rag_system.build_knowledge_base(force_rebuild=args.overwrite)
-            if success:
-                print("✅ Knowledge base built successfully!")
-            else:
-                print("❌ Failed to build knowledge base.")
+        match args.command: 
+            case "index":
+                await handle_index_command(rag_system, args)
 
-        elif args.command == "query":
-            print(f"\n❓ Query: {args.query}")
-            print("=" * 100)
-            result = rag_system.query(args.query)
-            print(f"🤖 Response: {result.response}")
-            if result.sources:
-                print(f"\n📚 Sources: {', '.join(result.sources)}")
-                print(f"🎯 Confidence: {result.confidence:.2f}")
-                print(f"⚡ Time: {result.processing_time:.2f}s")
+            case "query":
+                await handle_query_command(rag_system, args)
 
-        elif args.command == "chat":
-            interactive_chat(rag_system, args.session, args.stream)
+            case "chat":
+                await interactive_chat(rag_system, args.session, args.stream)
 
-        elif args.command == "sessions":
-            manage_sessions(rag_system, args)
+            case "sessions":
+                manage_sessions(rag_system, args)
 
-        elif args.command == "db": 
-            if args.check: 
-                print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
-            elif args.peek: 
-                rag_system.list_document(args.peek)
+            case "db": 
+                if args.check: 
+                    print(f"📚 Number of documents indexed in database: {rag_system.document_count()}")
+                elif args.peek: 
+                    rag_system.list_document(args.peek)
     else: 
         rag_system = RAGSystem(config)
         rag_system.build_knowledge_base()
@@ -61,10 +82,10 @@ def main():
             print(f"\nQuery: {query}")
             print("=" * 100)
             
-            result = rag_system.query(query)
+            result = await rag_system.query(query)
             print(result)
 
-def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enable_streaming: bool = False):
+async def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enable_streaming: bool = False):
     """ Enhanced interactive chat with LangChain """
 
     # Load the chats from the disk
@@ -94,10 +115,12 @@ def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enabl
     
     while True:
         try:
-            user_input = input(f"\n🧑 You [{session_id[:8]}...]: ").strip()
+            user_input = await asyncio.to_thread(input, f"\n🧑 You [{session_id[:8]}...]: ")
             
-            if not user_input:
+            if not user_input:  
                 continue
+
+            user_input = user_input.strip()
                 
             # Handle commands
             if user_input.startswith('/'):
@@ -151,20 +174,20 @@ def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enabl
             if streaming_enabled:
                 print("🤖 Assistant: ", end="", flush=True)
                 full_response = ""
-                for chunk in rag_system.stream_chat(user_input, session_id):
+                async for chunk in rag_system.stream_chat(user_input, session_id):
                     print(chunk, end="", flush=True)
                     full_response += chunk
                 print()  # New line after streaming
                 
                 # Note: We'd need to manually track sources in streaming mode
                 # For now, get them with a regular call for metadata
-                result = rag_system.chat(user_input, session_id)
+                result = await rag_system.chat(user_input, session_id)
                 if result.sources:
                     print(f"\n📚 Sources ({result.num_sources}): {', '.join(result.sources)}")
                     print(f"🎯 Confidence: {result.confidence:.2f}")
                     print(f"⚡ Time: {result.processing_time:.2f}s")
             else:
-                result = rag_system.chat(user_input, session_id)
+                result = await rag_system.chat(user_input, session_id)
                 print(f"🤖 Assistant: {result.response}")
                 
                 if result.sources:
@@ -203,7 +226,7 @@ def manage_sessions(rag_system: RAGSystem, args):
 
 if __name__ == "__main__": 
     try:
-        main()
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("\nProgram interrupted by user. Exiting.")
         sys.exit(0)
