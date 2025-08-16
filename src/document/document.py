@@ -6,6 +6,7 @@ from langchain_community.document_loaders import (
  
 import json
 import hashlib
+import asyncio
 from pathlib import Path
 from typing import List, Dict
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -18,7 +19,7 @@ from src.document.classification import get_classifier
 import logging
 logger = logging.getLogger(__name__)
 
-def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG) -> List[Document]:
+async def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG) -> List[Document]:
     """
     Loads a single document, classifies it, and adds the category to its metadata.
     This function is designed to be run in a separate process.
@@ -33,18 +34,18 @@ def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_CONFIG)
         else:
             loader = UnstructuredFileLoader(file_path, strategy="fast")
         
-        docs = loader.load()
+        docs = await loader.aload()
         if not docs:
             logger.warning(f"No content loaded from file: {file_path}")
             return []
 
-        #  Classification of file 
+        # Classification of file 
         category = "Unclassified"
         if config.DocProcessor.enable_classification: 
             classifier = get_classifier(config)
             # Take a sample text for classification
             content = '\n'.join([doc.page_content for doc in docs[:20]])[:8000]
-            category = classifier.classify(content_sample=content)
+            category = await classifier.classify(content_sample=content)
             logger.info(f"Classified '{Path(file_path).name}' as: {category}")
 
         # Add file type in metadata
@@ -79,7 +80,7 @@ class DocumentProcessor:
         with self.cache_path.open("w", encoding="utf-8") as f:
             json.dump(cache, f, indent=2)
 
-    def load_documents(self, force_reload: bool = False) -> List[Document]: 
+    async def load_documents(self, force_reload: bool = False) -> List[Document]: 
         """ Load documents from the corpus """
         documents: List[Document] = []
         cache = self.load_cache() if not force_reload else {}
@@ -95,42 +96,63 @@ class DocumentProcessor:
             if f.is_file() and f.suffix.lower() in self.config.DocProcessor.supported_extensions
         ]
         
-        # Faster loading with multiprocessing 
-        with ProcessPoolExecutor(max_workers=8) as executor: 
-            future_to_file = {}
-            for file_path in files_to_process: 
-                file_id = str(file_path)
-                try: 
-                    current_hash = self._get_file_hash(file_path)
-                    new_cache[file_id] = current_hash
+        # # Faster loading with multiprocessing 
+        # with ProcessPoolExecutor(max_workers=8) as executor: 
+        #     future_to_file = {}
+        #     for file_path in files_to_process: 
+        #         file_id = str(file_path)
+        #         try: 
+        #             current_hash = self._get_file_hash(file_path)
+        #             new_cache[file_id] = current_hash
 
-                    if not force_reload and cache.get(file_id) == current_hash:
-                        logger.info(f"Skipping cached and unchanged file: {file_path.name}")
-                        continue
+        #             if not force_reload and cache.get(file_id) == current_hash:
+        #                 logger.info(f"Skipping cached and unchanged file: {file_path.name}")
+        #                 continue
 
-                    # Submit the top-level worker function
-                    future = executor.submit(load_document_worker, str(file_path))
-                    future_to_file[future] = file_path
-                except Exception as e:
-                    logger.error(f"Failed to submit {file_path.name} for processing: {e}")
+        #             # Submit the top-level worker function
+        #             future = executor.submit(load_document_worker, str(file_path))
+        #             future_to_file[future] = file_path
+        #         except Exception as e:
+        #             logger.error(f"Failed to submit {file_path.name} for processing: {e}")
 
-            for future in as_completed(future_to_file):
-                file_path = future_to_file[future]
-                try:
-                    docs = future.result()
-                    if not docs: 
-                        executor.shutdown()
-                    documents.extend(docs)
-                    logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
-                except Exception as e:
-                    logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}", exc_info=True)
+        #     for future in as_completed(future_to_file):
+        #         file_path = future_to_file[future]
+        #         try:
+        #             docs = future.result()
+        #             if not docs: 
+        #                 executor.shutdown()
+        #             documents.extend(docs)
+        #             logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
+        #         except Exception as e:
+        #             logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}", exc_info=True)
+
+        # Async 
+        tasks = []
+        for file_path in files_to_process: 
+            file_id = str(file_path)
+            current_hash = self._get_file_hash(file_path)
+            new_cache[file_id] = current_hash
+
+            if not force_reload and cache.get(file_id) == current_hash:
+                logger.info(f"Skipping cached and unchanged file: {file_path.name}")
+                continue
+            
+            # Create a task for each document to be loaded and classified
+            tasks.append(load_document_worker(str(file_path), self.config))
+
+        # Run all loading and classification tasks concurrently
+        results = await asyncio.gather(*tasks)
                 
+        # Flatten the list of lists into a single list of documents
+        for doc_list in results:
+            documents.extend(doc_list)
+
         # Update cache
         self._save_cache(new_cache)
         logger.info(f"Total documents loaded: {len(documents)}")
         return documents
     
-    def split_documents(self, documents: List[Document]) -> List[Document]: 
+    async def split_documents(self, documents: List[Document]) -> List[Document]: 
         """
         Split the documents into chunks.
         The chunker is created here just-in-time to avoid pickling issues.

@@ -9,7 +9,7 @@ from parser import parser
 import logging
 logger = logging.getLogger(__name__)
 
-ENABLE_PARSER: bool = True
+ENABLE_PARSER: bool = False
 
 async def handle_index_command(system: RAGSystem, args: Any) -> None:
     """Handles the 'index' command by running the blocking function in an executor."""
@@ -21,7 +21,7 @@ async def handle_index_command(system: RAGSystem, args: Any) -> None:
         success = await loop.run_in_executor(
             None, system.build_knowledge_base, args.overwrite
         )
-        if success:
+        if success and not args.overwrite:
             print("✅ Knowledge base built successfully!")
         else:
             print("❌ Failed to build knowledge base.")
@@ -179,7 +179,7 @@ def handle_session_command(system: RAGSystem, args: Any) -> None:
                 print(f"{role_emoji} {msg['role']}: {msg['content']}")
 
 def handle_db_command(system: RAGSystem, args: Any) -> None: 
-    if args.check: 
+    if args.count:
         print(f"📚 Number of documents indexed in database: {system.document_count()}")
     elif args.peek: 
         system.list_document(args.peek)
@@ -214,7 +214,7 @@ async def main():
                 await asyncio.gather(*tasks, return_exceptions=True)
     else: 
         rag_system = RAGSystem(config)
-        rag_system.build_knowledge_base()
+        await rag_system.build_knowledge_base()
 
         queries: list[str] = [
             "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",

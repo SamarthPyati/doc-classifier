@@ -8,13 +8,14 @@ from src.constants import ClassificationMethod
 
 from abc import ABC, abstractmethod
 from typing import Dict
+
 import logging
 logger = logging.getLogger(__name__)
 
 class DocumentClassifierInterface(ABC): 
     """ Base class for document classifiers """
     @abstractmethod
-    def classify(self, content_sample: str) -> str: 
+    async def classify(self, content_sample: str) -> str: 
         """ Classify content and return the category as str """
         pass
 
@@ -22,7 +23,7 @@ class KeywordClassifier(DocumentClassifierInterface):
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
         self.keywords = config.DocProcessor.classification_keywords
 
-    def classify(self, content_sample: str): 
+    async def classify(self, content_sample: str): 
         if not content_sample: 
             return "GENERAL"
          
@@ -79,7 +80,7 @@ class LLMClassifier(DocumentClassifierInterface):
             },
         )
 
-    def classify(self, text_sample: str) -> str:
+    async def classify(self, text_sample: str) -> str:
         """
         Classifies the given text sample and returns the category name 
         """
@@ -88,8 +89,8 @@ class LLMClassifier(DocumentClassifierInterface):
             
         try:
             chain = self.prompt | self.llm | self.parser
-            result = chain.invoke({"text_sample": text_sample})
-            return result.category
+            result = await chain.invoke({"text_sample": text_sample})
+            return result.category  
         except Exception as e:
             logger.error(f"Error in document classification: {e}")
             # Fallback to a default category on error

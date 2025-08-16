@@ -20,7 +20,8 @@ class Result:
     session_id: str = "Null"
 
     def __str__(self):
-        return (f"\n📚 Sources: {', '.join(self.sources)}\n"
+        return (f"\n🤖 Response: {self.response}\n"
+                f"📚 Sources: {', '.join(self.sources)}\n"
                 f"🎯 Confidence: {self.confidence:.3f}\n"
                 f"⚡ Processing Time: {self.processing_time:.3f} second(s)\n")
 
