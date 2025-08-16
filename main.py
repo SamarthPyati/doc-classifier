@@ -9,8 +9,6 @@ from parser import parser
 import logging
 logger = logging.getLogger(__name__)
 
-ENABLE_PARSER: bool = False
-
 async def handle_index_command(system: RAGSystem, args: Any) -> None:
     """Handles the 'index' command by running the blocking function in an executor."""
     print(f"📚 Indexing documents from: {args.corpus_path}")
@@ -184,50 +182,52 @@ def handle_db_command(system: RAGSystem, args: Any) -> None:
     elif args.peek: 
         system.list_document(args.peek)
 
+async def handle_test_command(system: RAGSystem) -> None:
+    """ Pseudo Test code to test the system by rebuilding and answering 3 prewritten prompts """
+    await system.build_knowledge_base()
+
+    queries: list[str] = [
+        "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",
+        "Provide a summary of procurement policay of Shimla Jal Prabandhan Nigam Limited (SJPNL).",
+        "Explain Nature and Scope & Human Resource Planning of HR document of UTKAL University."
+    ]
+
+    for query in queries:
+        print(f"\nQuery: {query}")
+        print("=" * 100)
+
+        result = await system.query(query)
+        print(result)
+
 async def main(): 
     setup_logging()
     config = RAGConfig()    
 
-    if ENABLE_PARSER: 
-        args = parser(config)
-        rag_system = RAGSystem(config)
+    args = parser(config)
+    rag_system = RAGSystem(config)
 
-        try: 
-            match args.command: 
-                case "index":
-                    await handle_index_command(rag_system, args)
-                case "query":
-                    await handle_query_command(rag_system, args)
-                case "chat":
-                    await interactive_chat(rag_system, args.session, args.stream)
-                case "session":
-                    handle_session_command(rag_system, args)
-                case "db": 
-                    handle_db_command(rag_system, args)
-        finally:
-            # --- Graceful Shutdown ---
-            logger.info("Shutting down application and background tasks.")
-            tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-            for task in tasks:
-                task.cancel()
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
-    else: 
-        rag_system = RAGSystem(config)
-        await rag_system.build_knowledge_base()
-
-        queries: list[str] = [
-            "Provide a summary of Single Tender Enquiry (STE) and the auditing process that happens in IFCI.",
-            "Provide a summary of procurement policay of Shimla Jal Prabandhan Nigam Limited (SJPNL).",
-            "Explain Nature and Scope & Human Resource Planning of HR document of UTKAL University."
-        ]
-
-        for query in queries:
-            print(f"\nQuery: {query}")
-            print("=" * 100)
-            
-            result = await rag_system.query(query)
-            print(result)
+    try:
+        match args.command:
+            case "index":
+                await handle_index_command(rag_system, args)
+            case "query":
+                await handle_query_command(rag_system, args)
+            case "chat":
+                await interactive_chat(rag_system, args.session, args.stream)
+            case "test":
+                await handle_test_command(rag_system)
+            case "session":
+                handle_session_command(rag_system, args)
+            case "db":
+                handle_db_command(rag_system, args)
+    finally:
+        # Graceful Shutdown
+        logger.info("Shutting down application and background tasks.")
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__": 
     try:

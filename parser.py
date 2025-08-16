@@ -50,4 +50,7 @@ def parser(config: RAGConfig):
     db_group.add_argument("--peek", type=int, help="Show first 'n' documents in database.", default=10)
     db_group.add_argument("--count", action="store_true", help="Returns the count of entires in database.")
 
+    # --- Pseudo Test Subcommand ---
+    db_parser = subparsers.add_parser("test", help="Test by re-indexing the database and answering 3 prompts.", formatter_class=formatter)
+
     return parser.parse_args()

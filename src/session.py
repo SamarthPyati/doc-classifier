@@ -5,7 +5,7 @@ from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMess
 from langchain_core.messages.base import BaseMessage
 from typing import List, Dict
 
-# TODO: Store the session store in database instead of file 
+# TODO: Store the session store in a persistent database instead of file
 class SessionStore: 
     """ Class to store chat sessions with file management """
     def __init__(self, storage_path: str = "chat_sessions.json"): 
