@@ -31,6 +31,7 @@ class RAGSystem:
         
         self._llm = None
 
+        # TODO: Lazy initialization of chain_factory and other chains
         chain_factory = ChainFactory(
             llm=self._get_llm(), 
             retrieve_context_f=self._retrieve_context,
@@ -78,7 +79,7 @@ class RAGSystem:
         
         return ("\n" + "=" * 100 + "\n").join(formatted_docs)
 
-    async def build_knowledge_base(self, multiprocess: bool, force_rebuild: bool = False) -> bool:
+    async def build_knowledge_base(self, multiprocess: bool = False, force_rebuild: bool = False) -> bool:
         """ Build the knowledge base i.e. index the database from documents """
         try: 
             start_time = time.perf_counter()
@@ -86,12 +87,12 @@ class RAGSystem:
             
             # Load and process documents
             documents = await self.document_processor.load_documents(multiprocess=multiprocess, force_reload=force_rebuild)
-            if not documents:
+            if not len(documents):
                 logger.info("No new documents found to process")
                 return True
             
             # Split documents into chunks
-            chunks = await self.document_processor.split_documents(documents)
+            chunks = self.document_processor.split_documents(documents)
 
             success = self.vector_store.add_documents(chunks, force_rebuild=force_rebuild)
             

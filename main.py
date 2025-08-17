@@ -1,3 +1,4 @@
+#!/opt/homebrew/Caskroom/miniconda/base/envs/kpmg/bin/python3
 import sys
 import asyncio
 from typing import Any
@@ -14,7 +15,7 @@ async def handle_index_command(system: RAGSystem, args: Any) -> None:
     # TODO: Run indexing in a different thread
     logger.info(f"📚 Indexing documents from: {args.corpus_path}")
     try:
-        success = await system.build_knowledge_base(args.overwrite, args.multiprocess)
+        success = await system.build_knowledge_base(args.multiprocess, args.overwrite)
         if success and args.overwrite:
             print("✅ Knowledge base built successfully!")
         elif success:

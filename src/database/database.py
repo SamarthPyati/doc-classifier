@@ -124,6 +124,8 @@ class ChromaManager(VectorStoreInterface):
                 for batch, ids in self._batch_list(new_chunks, batch_size=1000): 
                     self._db.add_documents(batch, ids=ids)
                 return True
+            else: 
+                return False
 
         except Exception as e:
             logger.error(f"Error adding documents: {e}", exc_info=True)

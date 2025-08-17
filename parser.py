@@ -26,7 +26,6 @@ def parser(config: RAGConfig):
         help="Path to the document corpus directory."
     )
     index_parser.add_argument("--overwrite", action="store_true", help="Force rebuild, overwriting the existing index.")
-    index_parser.add_argument("--check", action="store_true", help="Check the number of documents currently in the index.")
     index_parser.add_argument("-mp", "--multiprocess", action="store_true", help="Use multiprocessing with all available compute cores instead of async.")
 
     # --- Query Command ---

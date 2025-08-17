@@ -100,7 +100,7 @@ class DocumentProcessor:
         # TODO: Test whether earlier Mulitprocessing method is faster or new async method.
         # MULTIPROCESS
         if multiprocess:
-            worker_count: int = os.cpu_count() if not None else 4
+            worker_count: int | None = os.cpu_count() if not None else 4
             with ProcessPoolExecutor(max_workers=worker_count) as executor:
                 future_to_file = {}
                 for file_path in files_to_process:
@@ -160,7 +160,7 @@ class DocumentProcessor:
         logger.info(f"Total documents loaded: {len(documents)}")
         return documents
     
-    async def split_documents(self, documents: List[Document]) -> List[Document]: 
+    def split_documents(self, documents: List[Document]) -> List[Document]:
         """
         Split the documents into chunks.
         The chunker is created here just-in-time to avoid pickling issues.
