@@ -10,7 +10,6 @@ from src.constants import VectorStoreProvider
 from .interface import VectorStoreInterface
 
 import os
-import shutil
 from pathlib import Path
 from typing import List, Iterator, Tuple
 from dotenv import load_dotenv
@@ -96,7 +95,7 @@ class ChromaManager(VectorStoreInterface):
         """ Add new documents to existing vector store """
         try: 
             if not self._db:
-                logger.error("No vector store available to add documents")
+                self._db = self._load_or_create_db()
                 return False
 
             # Get chunks with ids 
@@ -162,10 +161,8 @@ class ChromaManager(VectorStoreInterface):
     def reset(self) -> bool:
         """ Reset/clear the entire database """
         try:
-            if Path(self.database_path).exists():
-                shutil.rmtree(self.database_path)
-                logger.info("Database reset successfully")
-            self._db = None
+            if self._db is not None:
+                self._db.reset_collection()
             return True
         except Exception as e:
             logger.error(f"Error resetting database: {e}")

@@ -83,8 +83,16 @@ class RAGSystem:
         """ Build the knowledge base i.e. index the database from documents """
         try: 
             start_time = time.perf_counter()
-            logger.info("Building knowledge base...")
+            logger.info("Building knowledge base ...")
             
+            # Reset database if overwrite flag is set 
+            if force_rebuild:
+                logger.warning("Overwrite flag is set. Resetting the vector store.")
+                reset = self.vector_store.reset()
+                if not reset:
+                    logger.error("Failed to reset the vector store. Aborting build.")
+                    return False
+
             # Load and process documents
             documents = await self.document_processor.load_documents(multiprocess=multiprocess, force_reload=force_rebuild)
             if not len(documents):
