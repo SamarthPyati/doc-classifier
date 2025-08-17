@@ -85,7 +85,7 @@ class ChromaManager(VectorStoreInterface):
     def _batch_list(self, documents: List[Document], batch_size: int) -> Iterator[Tuple[List[Document], List[str]]]:
         """ 
         Yield successive n-sized chunks and ids tuple from a list. 
-        Helper function for chroma db to keep batch size less than 5461. 
+        Helper function for chroma db to keep batch size less than 5461 (Chroma DB Limitation).
         """
         for i in range(0, len(documents), batch_size):
             batch = documents[i:i + batch_size]
@@ -123,9 +123,6 @@ class ChromaManager(VectorStoreInterface):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")
                 for batch, ids in self._batch_list(new_chunks, batch_size=1000): 
                     self._db.add_documents(batch, ids=ids)
-                return True
-            else:
-                logger.info("No new documents to add")
                 return True
 
         except Exception as e:

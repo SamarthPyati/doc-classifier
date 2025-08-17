@@ -84,6 +84,7 @@ class LLMClassifier(DocumentClassifierInterface):
         """
         Classifies the given text sample and returns the category name 
         """
+        # TODO: Make a separate UNCLASSIFIED classification category
         if not text_sample:
             return "GENERAL"
             
@@ -103,7 +104,6 @@ def get_classifier(config: RAGConfig) -> DocumentClassifierInterface:
     based on the application configuration.
     """
     method = config.DocProcessor.classification_method
-    logger.info(f"Selected classification method: {method.value}")
 
     if method == ClassificationMethod.KEYWORD:
         return KeywordClassifier(config)

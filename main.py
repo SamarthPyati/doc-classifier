@@ -11,16 +11,14 @@ logger = logging.getLogger(__name__)
 
 async def handle_index_command(system: RAGSystem, args: Any) -> None:
     """Handles the 'index' command by running the blocking function in an executor."""
-    print(f"📚 Indexing documents from: {args.corpus_path}")
-    loop = asyncio.get_running_loop()
+    # TODO: Run indexing in a different thread
+    logger.info(f"📚 Indexing documents from: {args.corpus_path}")
     try:
-        # Run the synchronous, CPU/IO-bound function in a separate thread
-        # to avoid blocking the asyncio event loop.
-        success = await loop.run_in_executor(
-            None, system.build_knowledge_base, args.overwrite
-        )
-        if success and not args.overwrite:
+        success = await system.build_knowledge_base(args.overwrite, args.multiprocess)
+        if success and args.overwrite:
             print("✅ Knowledge base built successfully!")
+        elif success:
+            pass
         else:
             print("❌ Failed to build knowledge base.")
     except Exception as e:
@@ -220,6 +218,11 @@ async def main():
                 handle_session_command(rag_system, args)
             case "db":
                 handle_db_command(rag_system, args)
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        sys.exit(1)
+
     finally:
         # Graceful Shutdown
         logger.info("Shutting down application and background tasks.")
@@ -235,6 +238,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nProgram interrupted by user. Exiting.")
         sys.exit(0)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
-        sys.exit(1)

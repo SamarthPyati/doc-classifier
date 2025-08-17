@@ -18,8 +18,8 @@ class DocProcessorSettings(BaseModel):
     chunker_type: ChunkerType = ChunkerType.RECURSIVE_CHARACTER_TEXT_SPLITTER
 
     # Chunk size to split the document in (Makes the model get precise context to answer better)
-    chunk_size: int = 400
-    chunk_overlap: int = 0
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
 
     # PDF specific settings
     pdf_extract_images: bool = False
@@ -58,6 +58,7 @@ class EmbeddingSettings(BaseModel):
 
     # Batch operations 
     batch_size: int = 1000
+
 class DatabaseSettings(BaseModel):
     """ Settings for the vector database """
     provider: VectorStoreProvider = VectorStoreProvider.CHROMA
@@ -74,8 +75,6 @@ class DatabaseSettings(BaseModel):
     similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
      
     # TODO: Reranking
-    enable_reranking: bool = True
-    rerank_top_k: int = 20
 
 class LLMSettings(BaseModel):
     """ Settings for the Large Language Model which responds to chat and query """

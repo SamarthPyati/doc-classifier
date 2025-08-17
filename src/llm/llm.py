@@ -17,7 +17,6 @@ class LLMFactory:
         
         provider = self.config.LLM.provider
         model = self.config.LLM.model.value
-        logger.info(f"Initializing LLM with provider: {provider.value} and model: {model}")
 
         try:
             # Registry based model 
@@ -36,7 +35,7 @@ class LLMFactory:
             # Test the LLM connection
             llm.invoke("Hello")
 
-            logger.info(f"LLM initialized successfully with model: {model}")
+            logger.info(f"Successfully initialized LLM with provider: \"{provider.value}\" and model: \"{model}\"")
             return llm  
         except Exception as e:
             error_message = (

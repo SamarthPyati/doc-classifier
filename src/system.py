@@ -78,14 +78,14 @@ class RAGSystem:
         
         return ("\n" + "=" * 100 + "\n").join(formatted_docs)
 
-    async def build_knowledge_base(self, force_rebuild: bool = False) -> bool:
+    async def build_knowledge_base(self, multiprocess: bool, force_rebuild: bool = False) -> bool:
         """ Build the knowledge base i.e. index the database from documents """
         try: 
             start_time = time.perf_counter()
             logger.info("Building knowledge base...")
             
             # Load and process documents
-            documents = await self.document_processor.load_documents(force_reload=force_rebuild)
+            documents = await self.document_processor.load_documents(multiprocess=multiprocess, force_reload=force_rebuild)
             if not documents:
                 logger.info("No new documents found to process")
                 return True

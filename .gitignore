@@ -1,17 +1,17 @@
+.ruff_cache/
+.idea/
+.vscode/
 __pycache__/
 chroma*/
 corpus/
 logs/
-.ruff_cache/
-.idea/
-.vscode/
+references/
+probe/
 
 .DS_Store
 .env
 
 *sessions.json
-
 *.log
-
 *.ipynb
-probe
+
