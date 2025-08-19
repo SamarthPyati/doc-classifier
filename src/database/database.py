@@ -45,14 +45,11 @@ def calculate_chunk_ids(chunks: List[Document]) -> None:
 
 class ChromaManager(VectorStoreInterface): 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
-        self.config = config 
-        self.database_path = os.path.abspath(self.config.Database.path)
-        self.collection_name = self.config.Database.collection_name
-        self.embedding_function = Embeddings(config).get_embedding_model()    
+        self.database_path = os.path.abspath(config.Database.path)
+        self.collection_name = config.Database.collection_name
+        super().__init__(config)
 
-        self._db: Chroma | None = self._load_or_create_db()
-
-    def _load_or_create_db(self) -> Chroma | None:
+    def _initialize_db(self) -> Chroma | None:
         """ Get or create ChromaDB client with proper settings """
         try: 
             if not Path(self.database_path).exists():
@@ -95,7 +92,7 @@ class ChromaManager(VectorStoreInterface):
         """ Add new documents to existing vector store """
         try: 
             if not self._db:
-                self._db = self._load_or_create_db()
+                self._db = self._initialize_db()
                 return False
 
             # Get chunks with ids 
@@ -108,12 +105,9 @@ class ChromaManager(VectorStoreInterface):
                 # Filter out existing documents to avoid rebuilding 
                 existing_items = self._db.get(include=[])
                 existing_ids = set(existing_items["ids"])
-                logger.info(f"Number of existing documents in DB: {len(existing_ids)}")
 
-                for chunk in chunks:    
-                    if chunk.metadata["id"] not in existing_ids: 
-                        new_ids.append(chunk.metadata["id"])
-                        new_chunks.append(chunk)
+                new_chunks.extend([chunk for chunk in chunks if chunk.metadata["id"] not in existing_ids])
+                new_ids.extend([chunk.metadata["id"] for chunk in new_chunks])
             else: 
                 # If force_rebuild enabled just build everything from scratch
                 new_chunks = chunks
@@ -130,56 +124,14 @@ class ChromaManager(VectorStoreInterface):
             logger.error(f"Error adding documents: {e}", exc_info=True)
             return False
 
-    def similarity_search(self, query: str) -> List[Tuple[Document, float]]:
-        """ Perform similarity search with a query """
-        try:
-            # Perform similarity search
-            results = self._db.similarity_search_with_relevance_scores(
-                query, 
-                k=self.config.Database.max_results,  
-                score_threshold=self.config.Database.similarity_threshold
-            )
-            # Sort by relevance score
-            results.sort(key=lambda x: x[1], reverse=True)
-            
-            logger.info(f"Found {len(results)} relevant documents for query: \"{query[:50]}...\"")
-            return results
-            
-        except Exception as e:
-            logger.error(f"Error performing similarity search: {e}", exc_info=True)
-            return []
-
-    def count(self) -> int: 
-        return self._db._collection.count()
-
-    def peek(self, n: int): 
-        """ Helper function to peek into database, just for testing purposes """
-        docs = self._db._collection.peek(n)["metadatas"]
-        for doc in docs:
-            print(doc["source"], " -> ", doc["file_category"])
-
-    def reset(self) -> bool:
-        """ Reset/clear the entire database """
-        try:
-            if self._db is not None:
-                self._db.reset_collection()
-            return True
-        except Exception as e:
-            logger.error(f"Error resetting database: {e}")
-            return False
-
 class PineconeManager(VectorStoreInterface):
     def __init__(self, config: RAGConfig):
-        self.config = config
-        self.embedding_function = Embeddings(config).get_embedding_model()
-        
         self.pinecone_client = Pinecone()
-
         self.index_name = self.config.Database.collection_name
-        self._db = self._get_or_create_index()
+        super().__init__(config)
 
-    def _get_or_create_index(self) -> PineconeVectorStore | None:
-        try: 
+    def _initialize_db(self) -> PineconeVectorStore | None:
+        try:   
             if not self.pinecone_client.has_index(self.index_name):
                 logger.warning(f"Pinecone index '{self.index_name}' not found. Creating...")
                 embedding_dim = 768 # TODO: Make a mapping of embedding_model with its dimension
@@ -209,39 +161,12 @@ class PineconeManager(VectorStoreInterface):
         logger.info(f"Adding/updating {len(chunks)} chunks in Pinecone index '{self.index_name}'...")
         self._db.add_documents(chunks, batch_size=100)
         return True
-    
-    def count(self) -> int: 
-        return self._db._collection.count()
-
-    def peek(self, n: int): 
-        docs = self._db._collection.peek(n)["metadatas"]
-        for doc in docs:
-            print(doc["source"], " -> ", doc["file_category"])
-
-    def similarity_search(self, query: str) -> List[Tuple[Document, float]]:
-        """ Perform similarity search with a query """
-        try:
-            # Perform similarity search
-            results = self._db.similarity_search_with_relevance_scores(
-                query, 
-                k=self.config.Database.max_results,  
-                score_threshold=self.config.Database.similarity_threshold
-            )
-            # Sort by relevance score
-            results.sort(key=lambda x: x[1], reverse=True)
-            
-            logger.info(f"Found {len(results)} relevant documents for query: \"{query[:50]}...\"")
-            return results
-            
-        except Exception as e:
-            logger.error(f"Error performing similarity search: {e}", exc_info=True)
-            return []
 
     def reset(self) -> bool:
         logger.warning(f"Deleting Pinecone index '{self.index_name}'...")
         if self.pinecone_client.has_index(self.index_name):
             self.pinecone_client.delete_index(self.index_name)
-        self._db = self._get_or_create_index()
+        self._db = self._initialize_db()
         return True
 
 class VectorStoreManager:
