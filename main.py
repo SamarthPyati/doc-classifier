@@ -153,6 +153,9 @@ async def interactive_chat(rag_system: RAGSystem, session_id: str | None = None,
             logger.error(f"Error in chat: {e}")
             print(f"❌ Error: {e}")
 
+async def handle_chat_command(system: RAGSystem, args: Any) -> None: 
+    return await interactive_chat(system, args.session, args.stream)
+
 def handle_session_command(system: RAGSystem, args: Any) -> None:
     """ Manage chat sessions """
     if args.list:
@@ -212,7 +215,7 @@ async def main():
             case "query":
                 await handle_query_command(rag_system, args)
             case "chat":
-                await interactive_chat(rag_system, args.session, args.stream)
+                await handle_chat_command(rag_system,args)
             case "test":
                 await handle_test_command(rag_system)
             case "session":
