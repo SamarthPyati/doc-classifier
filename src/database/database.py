@@ -5,7 +5,6 @@ from pinecone import Pinecone, ServerlessSpec
 from chromadb.config import Settings as ChromaSettings
 
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
-from src.embedding import Embeddings
 from src.constants import VectorStoreProvider
 from .interface import VectorStoreInterface
 
