@@ -63,13 +63,19 @@ class DocumentProcessor:
         self.config = config
         self.cache_path = Path(self.config.corpus_path) / '.cache.json'
     
-    def _get_file_hash(self, file_path: Path) -> str:
-        """ OPTIMIZATION: Get the hash of file content by reading in chunks """
-        h = hashlib.md5()
-        with file_path.open("rb") as f:
-            while chunk := f.read(8192):
-                h.update(chunk)
-        return h.hexdigest()
+    async def _get_file_hash(self, file_path: Path) -> str:
+        """ Get the hash of file content by reading in chunks. Kept async so as to not block the event loop. """
+        loop = asyncio.get_running_loop() 
+        
+        def _hash_sync(file_path: Path) -> str: 
+            h = hashlib.md5()
+            with file_path.open("rb") as f:
+                while chunk := f.read(8192):
+                    h.update(chunk)
+            return h.hexdigest()
+        
+        return await loop.run_in_executor(None, _hash_sync, file_path)
+
 
     def load_cache(self) -> Dict[str, str]:
         if self.cache_path.exists():
@@ -135,7 +141,7 @@ class DocumentProcessor:
                 tasks = []
                 for file_path in files_to_process:
                     file_id = str(file_path)
-                    current_hash = self._get_file_hash(file_path)
+                    current_hash = await self._get_file_hash(file_path)
                     new_cache[file_id] = current_hash
 
                     if not force_reload and cache.get(file_id) == current_hash:
