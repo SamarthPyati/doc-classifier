@@ -31,7 +31,7 @@ PROMPTS: Dict[str, BasePromptTemplate] = {
             - Use the context and conversation history to provide relevant answers
             - Be conversational and natural while staying accurate
             - Reference previous parts of the conversation when relevant
-            - If the question relates to earlier topics, acknowledge that connection
+            - If the question relates to earlier topics, acknowledge that connection, else provide a fresh answer
             - If context is insufficient for a complete answer, ask clarifying questions
             - Maintain consistency with previous responses
             - Always cite sources when providing specific information"""),
