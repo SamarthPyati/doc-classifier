@@ -92,19 +92,15 @@ class ChromaManager(VectorStoreInterface):
             if not self._db:
                 self._db = self._initialize_db()
 
-            # Get chunks with ids 
+            # Add ids to metadata of chunks
             calculate_chunk_ids(chunks)
 
             new_chunks: List[Document] = []    
-            new_ids: List[str] = []
 
             if not force_rebuild: 
                 # Filter out existing documents to avoid rebuilding 
-                existing_items = self._db.get(include=[])
-                existing_ids = set(existing_items["ids"])
-
+                existing_ids = set(self._db.get(include=[])["ids"])
                 new_chunks.extend([chunk for chunk in chunks if chunk.metadata["id"] not in existing_ids])
-                new_ids.extend([chunk.metadata["id"] for chunk in new_chunks])
             else: 
                 # If force_rebuild enabled just build everything from scratch
                 new_chunks = chunks

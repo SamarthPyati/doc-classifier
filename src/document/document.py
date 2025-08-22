@@ -1,10 +1,6 @@
 from langchain.schema import Document
-from langchain_community.document_loaders import (
-    PyMuPDFLoader, 
-    UnstructuredFileLoader, 
-)
-
 from langchain_unstructured import UnstructuredLoader
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.vectorstores.utils import filter_complex_metadata
  
 import os
@@ -36,7 +32,7 @@ async def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_C
         if file_ext == ".pdf":
             loader = PyMuPDFLoader(file_path)
         else:
-            loader = UnstructuredFileLoader(file_path, strategy="fast")
+            loader = UnstructuredLoader(file_path, strategy="fast")
         
         docs = await loader.aload()
         if not docs:

@@ -112,7 +112,7 @@ class RAGSystem:
                 return True
             else:
                 logger.error("Failed to create vector store", exc_info=True)
-                return False    
+                return False
 
         except Exception as e: 
             logger.error(f"Error building knowledge Base: {e}", exc_info=True)
