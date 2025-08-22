@@ -110,7 +110,7 @@ class RAGConfig(BaseSettings):
         extra='ignore'
     )
 
-    corpus_path: str = "smol_corpus"
+    corpus_path: str = "corpus"
 
     DocProcessor: DocProcessorSettings = DocProcessorSettings()
     Embeddings: EmbeddingSettings = EmbeddingSettings()

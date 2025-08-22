@@ -86,32 +86,37 @@ class ChromaManager(VectorStoreInterface):
             ids = [doc.metadata["id"] for doc in batch]
             yield batch, ids
 
-    async def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
-        """ Add new documents to existing vector store """
+    def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
+        """ 
+        Add or update documents in the vector store.
+        This method now correctly handles updates for modified files.
+        """
         try: 
             if not self._db:
                 self._db = self._initialize_db()
+                # Check again after initialization attempt
+                if not self._db: 
+                    logger.error("Database could not be initialized. Aborting add_documents.")
+                    return False
+
+            if not chunks:
+                logger.info("No documents to add.")
+                return True
 
             # Add ids to metadata of chunks
             calculate_chunk_ids(chunks)
-
-            new_chunks: List[Document] = []    
-
-            if not force_rebuild: 
-                # Filter out existing documents to avoid rebuilding 
-                existing_ids = set(self._db.get(include=[])["ids"])
-                new_chunks.extend([chunk for chunk in chunks if chunk.metadata["id"] not in existing_ids])
-            else: 
-                # If force_rebuild enabled just build everything from scratch
-                new_chunks = chunks
             
-            if len(new_chunks):
-                logger.info(f"Adding {len(new_chunks)} new chunks to the database")
-                for batch, ids in self._batch_list(new_chunks, batch_size=1000): 
-                    await self._db.aadd_documents(batch, ids=ids)
-                return True
-            else: 
-                return False
+            ids_to_add = [chunk.metadata["id"] for chunk in chunks]
+
+            if ids_to_add:
+                logger.info(f"Adding/updating {len(chunks)} chunks in the database.")
+                # Chroma internally upserts document either updating or adding it to database
+                for batch, ids in self._batch_list(chunks, batch_size=1000): 
+                    self._db.add_documents(batch, ids=ids)
+            else:
+                logger.info("No new or modified chunks to add.")
+
+            return True
 
         except Exception as e:
             logger.error(f"Error adding documents: {e}", exc_info=True)

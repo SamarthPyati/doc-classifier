@@ -22,7 +22,7 @@ class VectorStoreInterface(ABC):
         pass
 
     @abstractmethod
-    async def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
+    def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
         """Adds documents to the vector store."""
         pass
 
