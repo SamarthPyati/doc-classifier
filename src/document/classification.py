@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 class DocumentClassifierInterface(ABC): 
     """ Base class for document classifiers """
+    def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
+        self.keywords = config.DocProcessor.classification_keywords
+        self.categories = config.DocProcessor.classification_categories
+    
     @abstractmethod
     async def classify(self, content_sample: str) -> str: 
         """ Classify content and return the category as str """
@@ -21,7 +25,7 @@ class DocumentClassifierInterface(ABC):
 
 class KeywordClassifier(DocumentClassifierInterface): 
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 
-        self.keywords = config.DocProcessor.classification_keywords
+        super().__init__(config)
 
     async def classify(self, content_sample: str): 
         if not content_sample: 
@@ -52,9 +56,12 @@ class LLMClassifier(DocumentClassifierInterface):
         self.parser = PydanticOutputParser(pydantic_object=LLMClassifier.DocumentCategory) 
         self.prompt = self._create_prompt()
 
+        super().__init__(config)
+
+
     def _create_prompt(self) -> ChatPromptTemplate:
         """ Creates a prompt template for the classification task """
-        categories = self.config.DocProcessor.classification_categories
+        categories = self.categories
         
         prompt_template = """
         You are an expert document classifier. Your task is to analyze the text sample provided and assign it to ONE of the following categories.

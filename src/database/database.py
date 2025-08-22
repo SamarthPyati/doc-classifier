@@ -48,7 +48,7 @@ class ChromaManager(VectorStoreInterface):
         self.collection_name = config.Database.collection_name
         super().__init__(config)
 
-    def _initialize_db(self) -> Chroma | None:
+    def _initialize_db(self) -> Chroma:
         """ Get or create ChromaDB client with proper settings """
         try: 
             if not Path(self.database_path).exists():
@@ -72,10 +72,9 @@ class ChromaManager(VectorStoreInterface):
             return db
 
         except Exception as e:
-            logger.error(f"Error loading vector store: {e}")
-            # Try to reset and return None
-            self.reset()
-            return None
+            logger.error(f"FATAL: Error loading vector store: {e}", exc_info=True)
+            # Raise the exception instead of returning None to prevent silent failures
+            raise ConnectionError("Failed to initialize the ChromaDB vector store.") from e
 
     def _batch_list(self, documents: List[Document], batch_size: int) -> Iterator[Tuple[List[Document], List[str]]]:
         """ 
@@ -92,7 +91,6 @@ class ChromaManager(VectorStoreInterface):
         try: 
             if not self._db:
                 self._db = self._initialize_db()
-                return False
 
             # Get chunks with ids 
             calculate_chunk_ids(chunks)

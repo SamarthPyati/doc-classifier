@@ -1,0 +1,41 @@
+HR:
+  - "human resources"
+  - "employee"
+  - "recruitment"
+  - "onboarding"
+  - "payroll"
+  - "benefits"
+
+PROCUREMENT:
+  - "procurement"
+  - "tender"
+  - "vendor"
+  - "supplier"
+  - "purchase order"
+  - "invoice"
+
+LEGAL:
+  - "agreement"
+  - "contract"
+  - "legal"
+  - "compliance"
+  - "terms and conditions"
+  - "nda"
+
+FINANCE:
+  - "finance"
+  - "budget"
+  - "audit"
+  - "financial statement"
+  - "tax"
+  - "revenue"
+
+TECHNICAL:
+  - "technical specification"
+  - "api"
+  - "software"
+  - "hardware"
+  - "architecture"
+  - "database"
+  
+GENERAL: [] # A fallback category

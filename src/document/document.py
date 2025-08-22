@@ -3,6 +3,9 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader, 
     UnstructuredFileLoader, 
 )
+
+from langchain_unstructured import UnstructuredLoader
+from langchain_community.vectorstores.utils import filter_complex_metadata
  
 import os
 import json
@@ -176,8 +179,13 @@ class DocumentProcessor:
             chunker = get_chunker(self.config, embeddings)
             
             chunks = chunker.split_documents(documents=documents)
-            logger.info(f"Split {len(documents)} documents into {len(chunks)} chunks.")
-            return chunks
+
+            # This line removes metadata that is not a string, integer, float, or boolean.
+            # This is necessary because ChromaDB does not support complex metadata types.
+            filtered_chunks = filter_complex_metadata(chunks)
+
+            logger.info(f"Split {len(documents)} documents into {len(filtered_chunks)} chunks.")
+            return filtered_chunks
         except Exception as e: 
             logger.error(f"Error splitting documents: {e}", exc_info=True)
             raise

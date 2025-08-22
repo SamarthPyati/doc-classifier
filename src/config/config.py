@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, Tuple, Dict, List
+import yaml
 
 from src.constants import (
     EmbeddingProvider,
@@ -12,6 +13,16 @@ from src.constants import (
     ClassificationMethod
 )
 
+def load_keywords_from_yaml(path: str = "src/config/keywords.yml") -> Dict[str, List[str]]:
+    """ Loads classification keywords from a YAML file """
+    try:
+        with open(path, 'r') as f:
+            result = yaml.safe_load(f)
+            return result
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        print(f"Warning: Could not load keywords from {path}. Error: {e}")
+        return {"GENERAL": []}
+    
 class DocProcessorSettings(BaseModel):
     """ Settings for document processing and chunking """
     # Chunking strategy
@@ -31,20 +42,11 @@ class DocProcessorSettings(BaseModel):
     # Settings for classification 
     enable_classification: bool = True
     classification_method: ClassificationMethod = ClassificationMethod.KEYWORD
+    classification_keywords: Dict[str, List[str]] = Field(default_factory=load_keywords_from_yaml)
 
-    # For Keyword classifier 
-    # TODO: Figure out a proper way to contain the keyword classification logic 
-    classification_keywords: Dict[str, List[str]] = {
-        "HR": ["human resources", "employee", "recruitment", "onboarding", "payroll", "benefits"],
-        "PROCUREMENT": ["procurement", "tender", "vendor", "supplier", "purchase order", "invoice"],
-        "LEGAL": ["agreement", "contract", "legal", "compliance", "terms and conditions", "nda"],
-        "FINANCE": ["finance", "budget", "audit", "financial statement", "tax", "revenue"],
-        "TECHNICAL": ["technical specification", "api", "software", "hardware", "architecture", "database"],
-        "GENERAL": [] # A fallback category
-    }
-
-    # For llm classifier
-    classification_categories: List[str] = list(classification_keywords.keys())
+    @property
+    def classification_categories(self) -> List[str]: 
+        return list(self.classification_keywords.keys())
     
 class EmbeddingSettings(BaseModel):
     """ Settings for text embedding models and providers """
