@@ -86,7 +86,7 @@ class ChromaManager(VectorStoreInterface):
             ids = [doc.metadata["id"] for doc in batch]
             yield batch, ids
 
-    def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
+    async def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
         """ Add new documents to existing vector store """
         try: 
             if not self._db:
@@ -108,7 +108,7 @@ class ChromaManager(VectorStoreInterface):
             if len(new_chunks):
                 logger.info(f"Adding {len(new_chunks)} new chunks to the database")
                 for batch, ids in self._batch_list(new_chunks, batch_size=1000): 
-                    self._db.add_documents(batch, ids=ids)
+                    await self._db.aadd_documents(batch, ids=ids)
                 return True
             else: 
                 return False
