@@ -33,7 +33,7 @@ class RAGSystem:
 
         # TODO: Lazy initialization of chain_factory and other chains
         chain_factory = ChainFactory(
-            llm=self._get_llm(), 
+            llm=self._get_llm(),    
             retrieve_context_f=self._retrieve_context,
             format_context_f=self._format_context
         )
@@ -150,10 +150,6 @@ class RAGSystem:
             logger.error(f"Error querying RAG system: {e}")
             return Result(response=f"Error processing query: {e}")
 
-    # IDEATE: How will this chat system work?
-    # Every time user queries the system, it will essentially perform the search operation on the document corpus once again. 
-    # Optimal approach would be to chat query the entire corpus once and store that context into the conversation (Make a conversation 
-    # class) and use that to answer the follow-up questions.
     async def chat(self, message: str, session_id: Optional[str] = None) -> Result:
         """ Process a chat message with conversation history """
         session_id = session_id or self.current_session_id

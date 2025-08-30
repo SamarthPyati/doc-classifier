@@ -1,41 +1,146 @@
 HR:
-  - "human resources"
-  - "employee"
-  - "recruitment"
-  - "onboarding"
-  - "payroll"
-  - "benefits"
+  - human resources
+  - employee
+  - recruitment
+  - onboarding
+  - payroll
+  - benefits
+  - personnel
+  - staffing
+  - compensation
+  - performance review
+  - dismissal
+  - termination
+  - hiring
+  - talent acquisition
+  - hrms
+  - human capital
+  - workforce
+  - timesheet
+  - leave policy
 
 PROCUREMENT:
-  - "procurement"
-  - "tender"
-  - "vendor"
-  - "supplier"
-  - "purchase order"
-  - "invoice"
+  - procurement
+  - tender
+  - vendor
+  - supplier
+  - purchase order
+  - invoice
+  - po
+  - rfp
+  - request for proposal
+  - rfq
+  - request for quotation
+  - sourcing
+  - purchasing
+  - supply chain
+  - logistics
+  - bidding
+  - contract award
+  - requisition
 
 LEGAL:
-  - "agreement"
-  - "contract"
-  - "legal"
-  - "compliance"
-  - "terms and conditions"
-  - "nda"
+  - agreement
+  - contract
+  - legal
+  - compliance
+  - terms and conditions
+  - nda
+  - non-disclosure
+  - statute
+  - regulation
+  - litigation
+  - arbitration
+  - intellectual property
+  - ip
+  - gdpr
+  - liability
+  - clause
+  - privacy policy
+  - indemnity
+  - jurisdiction
 
 FINANCE:
-  - "finance"
-  - "budget"
-  - "audit"
-  - "financial statement"
-  - "tax"
-  - "revenue"
+  - finance
+  - budget
+  - audit
+  - financial statement
+  - tax
+  - revenue
+  - p&l
+  - expenditure
+  - balance sheet
+  - income statement
+  - cash flow
+  - equity
+  - debt
+  - asset
+  - liability
+  - quarterly report
+  - annual report
+  - earnings
+  - fiscal
+  - depreciation
 
 TECHNICAL:
-  - "technical specification"
-  - "api"
-  - "software"
-  - "hardware"
-  - "architecture"
-  - "database"
-  
-GENERAL: [] # A fallback category
+  - technical specification
+  - api
+  - software
+  - hardware
+  - architecture
+  - database
+  - deployment
+  - infrastructure
+  - cybersecurity
+  - saas
+  - paas
+  - iaas
+  - network
+  - api documentation
+  - data schema
+  - bug report
+  - feature request
+  - source code
+  - algorithm
+  - server
+  - cloud computing
+  - sdk
+  - version control
+
+MARKETING:
+  - marketing
+  - campaign
+  - advertising
+  - brand
+  - seo
+  - search engine optimization
+  - social media
+  - market research
+  - analytics
+  - lead generation
+  - content strategy
+  - public relations
+  - pr
+  - customer engagement
+  - cpm
+  - cpc
+  - conversion rate
+
+OPERATIONS:
+  - operations
+  - workflow
+  - process improvement
+  - quality assurance
+  - qa
+  - qc
+  - logistics
+  - inventory management
+  - business continuity
+  - supply chain management
+  - standard operating procedure
+  - sop
+  - efficiency
+  - service level agreement
+  - sla
+
+GENERAL: []

@@ -17,7 +17,7 @@ def load_keywords_from_yaml(path: str = "src/config/keywords.yml") -> Dict[str, 
     """ Loads classification keywords from a YAML file """
     try:
         with open(path, 'r') as f:
-            result = yaml.safe_load(f)
+            result: Dict[str, List[str]] = yaml.safe_load(f)
             return result
     except (FileNotFoundError, yaml.YAMLError) as e:
         print(f"Warning: Could not load keywords from {path}. Error: {e}")

@@ -51,9 +51,18 @@ class VectorStoreInterface(ABC):
 
     def peek(self, n: int): 
         """ Helper function to peek into database, just for testing purposes """
-        docs = self._db._collection.peek(n)["metadatas"]
-        for doc in docs:
-            print(doc.get("source", "N/A"), " -> ", doc.get("file_category", "N/A"))
+        metadatas = self._db._collection.peek(limit=4000)["metadatas"]
+        
+        unique = {}
+        for doc_meta in metadatas: 
+            source = doc_meta.get("source", "N/A")
+            file_category = doc_meta.get("file_category", "N/A")
+
+            if source not in unique: 
+                unique[source] = file_category
+
+        for source, category in unique.items():
+            print(f"{source} -> {category}")
 
     def reset(self) -> bool:
         """ Reset/clear the entire database """
