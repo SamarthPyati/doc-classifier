@@ -3,6 +3,9 @@ import sys
 import asyncio
 from typing import Any
 
+import cProfile 
+import pstats
+
 from src.config import setup_logging
 from src import RAGConfig, RAGSystem
 from parser import parser
@@ -236,9 +239,22 @@ async def main():
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
+PROFILE_ENABLE: bool = False
+
 if __name__ == "__main__": 
+
     try:
-        asyncio.run(main())
+        if PROFILE_ENABLE: 
+            with cProfile.Profile() as cp: 
+                asyncio.run(main())
+
+                # Order the stats and dump it
+                stats = pstats.Stats(cp)
+                stats.sort_stats(pstats.SortKey.TIME)
+                stats.dump_stats("profile.prof")
+        else: 
+            asyncio.run(main())
+
     except KeyboardInterrupt:
         print("\nProgram interrupted by user. Exiting.")
         sys.exit(0)
