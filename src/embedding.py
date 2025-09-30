@@ -28,6 +28,8 @@ class Embeddings:
         self.__embedding_model_huggingface = self.config.Embeddings.huggingface_model.value
         self.__embedding_model_google = self.config.Embeddings.google_model
         self.__embedding_model_openai = self.config.Embeddings.openai_model
+        
+        self.output_dimensionality = self.config.Embeddings.output_dimensionality
 
     @handle_embedding_errors
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:
@@ -41,6 +43,7 @@ class Embeddings:
     def _get_gemini_model(self) -> GoogleGenerativeAIEmbeddings:
         return GoogleGenerativeAIEmbeddings(
             model=self.__embedding_model_google, 
+            task_type='retrieval_document',  
         )
 
     @handle_embedding_errors

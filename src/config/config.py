@@ -52,10 +52,11 @@ class EmbeddingSettings(BaseModel):
     """ Settings for text embedding models and providers """
     provider: EmbeddingProvider = Field(default=EmbeddingProvider.GOOGLE, alias="embedding_provider")
     normalize: bool = Field(default=True, alias="normalize_embeddings")
+    output_dimensionality: int | None = Field(default=768)
 
     # Model names for different providers
     huggingface_model: EmbeddingModelHuggingFace = Field(default=EmbeddingModelHuggingFace.MINI_LM, alias="embedding_model_huggingface")
-    google_model: str = Field(default="models/embedding-001", alias="embedding_model_google")
+    google_model: str = Field(default="models/text-embedding-004", alias="embedding_model_google")
     openai_model: str = Field(default="text-embedding-3-small", alias="embedding_model_openai")
 
     # Batch operations 

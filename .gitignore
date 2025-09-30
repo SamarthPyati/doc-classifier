@@ -1,7 +1,12 @@
 .ruff_cache/
 .idea/
 .vscode/
+.deepeval/
+.benchmarks/
 __pycache__/
+
+.pytest_cache/
+
 chroma*/
 *corpus*/
 logs/
