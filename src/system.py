@@ -11,6 +11,7 @@ from .session import SessionStore
 
 import time
 import uuid
+import asyncio
 from typing import List, Dict, Optional, Any
 import functools
 
@@ -99,10 +100,11 @@ class RAGSystem:
                 logger.info("No new documents found to process")
                 return True
             
-            # Split documents into chunks
-            chunks = self.document_processor.split_documents(documents)
+            # Split documents into chunks (run in thread executor to avoid blocking event loop)
+            chunks = await asyncio.to_thread(self.document_processor.split_documents, documents)
 
-            success = self.vector_store.add_documents(chunks, force_rebuild=force_rebuild)
+            # Add documents to vector store (run in thread executor to avoid blocking event loop)
+            success = await asyncio.to_thread(self.vector_store.add_documents, chunks, force_rebuild)
             
             if success:
                 build_time = time.perf_counter() - start_time

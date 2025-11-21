@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 async def handle_index_command(system: RAGSystem, args: Any) -> None:
     """Handles the 'index' command by running the blocking function in an executor."""
-    # TODO: Run indexing in a different thread
     logger.info(f"📚 Indexing documents from: {args.corpus_path}")
     try:
         success = await system.build_knowledge_base(args.multiprocess, args.overwrite)
