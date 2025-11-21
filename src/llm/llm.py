@@ -32,9 +32,6 @@ class LLMFactory:
             
             llm = llm_creator_f()
 
-            # Test the LLM connection
-            llm.invoke("Hello")
-
             logger.info(f"Successfully initialized LLM with provider: \"{provider.value}\" and model: \"{model}\"")
             return llm  
         except Exception as e:
@@ -43,7 +40,7 @@ class LLMFactory:
                 f"Please check your configuration, API keys, and ensure the model service is running. Original error: {e}"
             )
             logger.error(error_message, exc_info=False)
-            return None
+            raise RuntimeError(error_message) from e
 
     def _create_ollama_llm(self) -> OllamaLLM: 
         return OllamaLLM(

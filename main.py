@@ -209,6 +209,9 @@ async def main():
 
     args = parser(config)
     rag_system = RAGSystem(config)
+    
+    # Initialize the system asynchronously
+    await rag_system.initialize()
 
     try:
         match args.command:

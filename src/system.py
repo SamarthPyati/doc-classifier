@@ -23,29 +23,43 @@ class RAGSystem:
         self.config = config
         self.document_processor = DocumentProcessor(config)
         self.llm_factory = LLMFactory(config)
-        self.vector_store = VectorStoreManager(config).get_vector_store()
+        
+        # Initialize vector store manager but don't get the store yet
+        self.vector_store_manager = VectorStoreManager(config)
+        self.vector_store = None 
 
         # Make an uuid for current chat session
         self.current_session_id = str(uuid.uuid4())
         self.session_store = SessionStore()
         
         self._llm = None
+        self.query_chain = None
+        self.conversational_chain = None
 
-        # TODO: Lazy initialization of chain_factory and other chains
+    async def initialize(self) -> None: 
+        """ Async initialization of the system components """
+        logger.info("Initializing RAG System components ...")
+        
+        # Initialize LLM
+        self._llm = self.llm_factory.get_llm()
+        
+        # Initialize Vector Store
+        self.vector_store = self.vector_store_manager.get_vector_store()
+        await self.vector_store.initialize()
+
+        # Initialize Chains
         chain_factory = ChainFactory(
-            llm=self._get_llm(),    
+            llm=self._llm,    
             retrieve_context_f=self._retrieve_context,
             format_context_f=self._format_context
         )
 
         self.query_chain = chain_factory.create_query_chain()
         self.conversational_chain = chain_factory.create_conversational_chain(self.session_store)
+        
+        logger.info("RAG System initialized successfully.")
 
-    # Lazy Getters for slow-to-initialize objects
-    def _get_llm(self):
-        if self._llm is None:
-            self._llm = self.llm_factory.get_llm()
-        return self._llm
+
 
     def _retrieve_context(self, query: str) -> RAGContext:
         """ Retrieve relevant documents using vector search """

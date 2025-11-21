@@ -10,16 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def handle_embedding_errors(func): 
-    """ Wrapper to handle the errors while initializing the embedding model """
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs): 
-        try: 
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Error initializing embedding model in {func.__name__}: {e}")
-            return None
-    return wrapper
+
 
 class Embeddings:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG):
@@ -31,7 +22,6 @@ class Embeddings:
         
         self.output_dimensionality = self.config.Embeddings.output_dimensionality
 
-    @handle_embedding_errors
     def _get_huggingface_model(self, device: str = 'mps', normalize_embeddings: bool = True) -> HuggingFaceEmbeddings:
         return HuggingFaceEmbeddings(
             model_name=self.__embedding_model_huggingface,
@@ -39,14 +29,12 @@ class Embeddings:
             encode_kwargs={'normalize_embeddings': normalize_embeddings}
         )
 
-    @handle_embedding_errors
     def _get_gemini_model(self) -> GoogleGenerativeAIEmbeddings:
         return GoogleGenerativeAIEmbeddings(
             model=self.__embedding_model_google, 
             task_type='retrieval_document',  
         )
 
-    @handle_embedding_errors
     def _get_openai_model(self) -> OpenAIEmbeddings:
         return OpenAIEmbeddings(
             model=self.__embedding_model_openai

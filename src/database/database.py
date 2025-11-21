@@ -7,6 +7,7 @@ from chromadb.config import Settings as ChromaSettings
 from src.config import RAGConfig, DEFAULT_RAG_CONFIG
 from src.constants import VectorStoreProvider
 from .interface import VectorStoreInterface
+import asyncio
 
 import os
 from pathlib import Path
@@ -47,6 +48,11 @@ class ChromaManager(VectorStoreInterface):
         self.database_path = os.path.abspath(config.Database.path)
         self.collection_name = config.Database.collection_name
         super().__init__(config)
+
+    async def initialize(self) -> None:
+        """ Async initialization of the database """
+        # Run blocking initialization in a thread
+        self._db = await asyncio.to_thread(self._initialize_db)
 
     def _initialize_db(self) -> Chroma:
         """ Get or create ChromaDB client with proper settings """
@@ -125,8 +131,13 @@ class ChromaManager(VectorStoreInterface):
 class PineconeManager(VectorStoreInterface):
     def __init__(self, config: RAGConfig):
         self.pinecone_client = Pinecone()
-        self.index_name = self.config.Database.collection_name
+        self.index_name = config.Database.collection_name # Use config directly here as self.config is set in super
         super().__init__(config)
+
+    async def initialize(self) -> None:
+        """ Async initialization of the database """
+        # Run blocking initialization in a thread
+        self._db = await asyncio.to_thread(self._initialize_db)
 
     def _initialize_db(self) -> PineconeVectorStore | None:
         try:   

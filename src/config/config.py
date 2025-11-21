@@ -13,10 +13,16 @@ from src.constants import (
     ClassificationMethod
 )
 
-def load_keywords_from_yaml(path: str = "src/config/keywords.yml") -> Dict[str, List[str]]:
+from pathlib import Path
+
+def load_keywords_from_yaml(path: str = "keywords.yml") -> Dict[str, List[str]]:
     """ Loads classification keywords from a YAML file """
     try:
-        with open(path, 'r') as f:
+        # Resolve path relative to this file
+        config_dir = Path(__file__).parent
+        full_path = config_dir / path
+        
+        with open(full_path, 'r') as f:
             result: Dict[str, List[str]] = yaml.safe_load(f)
             return result
     except (FileNotFoundError, yaml.YAMLError) as e:
