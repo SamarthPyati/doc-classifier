@@ -36,8 +36,18 @@ class DocProcessorSettings(BaseModel):
     pdf_extract_images: bool = False
     pdf_table_structure_infer_mode: Literal['csv', 'markdown', 'html', None] = 'csv'
     
-    # TODO: Add more document types for support
-    supported_extensions: Tuple[str, ...] = (".pdf", ".txt", ".md", ".xhtml", ".html", ".docx")
+    # Supported document file extensions
+    # Office documents: PDF, Word, PowerPoint, Excel, RTF, OpenDocument
+    # Web formats: HTML, XHTML, Markdown
+    # Data formats: CSV, JSON, XML, YAML
+    # E-books: EPUB
+    # Plain text: TXT
+    supported_extensions: Tuple[str, ...] = (
+        ".pdf", ".txt", ".md", ".xhtml", ".html", ".docx",
+        ".pptx", ".xlsx", ".xls", ".rtf", ".odt",
+        ".csv", ".json", ".xml", ".yaml", ".yml",
+        ".epub"
+    )
 
     # Settings for classification 
     enable_classification: bool = True

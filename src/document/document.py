@@ -1,6 +1,15 @@
 from langchain.schema import Document
 from langchain_unstructured import UnstructuredLoader
-from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_community.document_loaders import (
+    PyMuPDFLoader,
+    CSVLoader,
+    UnstructuredExcelLoader,
+    UnstructuredPowerPointLoader,
+    UnstructuredEPubLoader,
+    UnstructuredXMLLoader,
+    UnstructuredRTFLoader,
+    UnstructuredODTLoader,
+)
 from langchain_community.vectorstores.utils import filter_complex_metadata
  
 import os
@@ -29,9 +38,30 @@ async def load_document_worker(file_path: str, config: RAGConfig = DEFAULT_RAG_C
     """
     try:
         file_ext = Path(file_path).suffix.lower()
+        
+        # Use specific loaders for better handling of certain file types
         if file_ext == ".pdf":
             loader = PyMuPDFLoader(file_path)
+        elif file_ext == ".csv":
+            loader = CSVLoader(file_path, encoding="utf-8")
+        elif file_ext in [".json"]:
+            # JSONLoader requires a jq_schema parameter, use UnstructuredLoader for simplicity
+            loader = UnstructuredLoader(file_path, strategy="fast")
+        elif file_ext in [".xlsx", ".xls"]:
+            loader = UnstructuredExcelLoader(file_path)
+        elif file_ext == ".pptx":
+            loader = UnstructuredPowerPointLoader(file_path)
+        elif file_ext == ".epub":
+            loader = UnstructuredEPubLoader(file_path)
+        elif file_ext == ".xml":
+            loader = UnstructuredXMLLoader(file_path)
+        elif file_ext == ".rtf":
+            loader = UnstructuredRTFLoader(file_path)
+        elif file_ext == ".odt":
+            loader = UnstructuredODTLoader(file_path)
         else:
+            # Default to UnstructuredLoader for other supported formats
+            # (txt, md, html, xhtml, docx, yaml, yml)
             loader = UnstructuredLoader(file_path, strategy="fast")
         
         docs = await loader.aload()
