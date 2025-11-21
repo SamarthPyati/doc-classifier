@@ -56,6 +56,15 @@ def print_chat_help(header: bool = False) -> None:
     print("  /quit      - Exit chat")
     print("="*80)
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from src.models import Result
+
+console = Console()
+
 async def interactive_chat(rag_system: RAGSystem, session_id: str | None = None, enable_streaming: bool = False):
     """ Enhanced interactive chat with LangChain """
 
@@ -64,18 +73,23 @@ async def interactive_chat(rag_system: RAGSystem, session_id: str | None = None,
 
     if session_id:
         rag_system.current_session_id = session_id
-        print(f"📱 Using session: {session_id}")
+        console.print(f"[bold green]📱 Using session:[/bold green] {session_id}")
     else:
         session_id = rag_system.create_new_session()
-        print(f"📱 Created new session: {session_id}")
+        console.print(f"[bold green]📱 Created new session:[/bold green] {session_id}")
 
     print_chat_help(header=True)
     
     streaming_enabled = enable_streaming
     
+    # Setup prompt session with history
+    history_file = ".chat_history"
+    session = PromptSession(history=FileHistory(history_file))
+    
     while True:
         try:
-            user_input = await asyncio.to_thread(input, f"🧑 You [{session_id[:8]}...]: ")
+            # Use prompt_toolkit for better input handling
+            user_input = await session.prompt_async(f"🧑 You [{session_id[:8]}...]: ")
             
             if not user_input:  
                 continue
@@ -97,63 +111,81 @@ async def interactive_chat(rag_system: RAGSystem, session_id: str | None = None,
                 elif command == '/history':
                     history = rag_system.get_chat_history(session_id)
                     if not history:
-                        print("📝 No conversation history yet.")
+                        console.print("📝 No conversation history yet.")
                     else:
-                        print(f"\n📝 Chat History ({len(history)} messages):")
-                        print("-" * 50)
+                        console.print(f"\n[bold]📝 Chat History ({len(history)} messages):[/bold]")
+                        console.rule()
                         for msg in history:
                             role_emoji = "🧑" if msg["role"] == "human" else "🤖"
-                            print(f"{role_emoji} {msg['role']}: {msg['content'][:100]}...")
+                            console.print(f"{role_emoji} {msg['role']}: {msg['content'][:100]}...")
 
                 elif command == '/clear':
                     rag_system.clear_chat_history(session_id)
-                    print("🗑️ Chat history cleared.")
+                    console.print("🗑️ Chat history cleared.")
 
                 elif command == '/new':
                     session_id = rag_system.create_new_session()
-                    print(f"🆕 New chat session started: {session_id}")
+                    console.print(f"🆕 New chat session started: {session_id}")
 
                 elif command == '/sessions':
                     sessions = rag_system.list_sessions()
-                    print(f"📋 Active sessions ({len(sessions)}):")
+                    console.print(f"📋 Active sessions ({len(sessions)}):")
                     for sid in sessions:
                         marker = "👈 current" if sid == session_id else ""
-                        print(f"  {sid[:8]}... {marker}")
+                        console.print(f"  {sid[:8]}... {marker}")
 
                 elif command == '/stream':
                     streaming_enabled = not streaming_enabled
-                    print(f"🔄 Streaming mode: {'enabled' if streaming_enabled else 'disabled'}")
+                    console.print(f"🔄 Streaming mode: {'[green]enabled[/green]' if streaming_enabled else '[red]disabled[/red]'}")
 
                 else:
-                    print("❓ Unknown command. Type /help for available commands.")
+                    console.print("❓ Unknown command. Type /help for available commands.")
                 continue
             
             # Process chat message
             if streaming_enabled:
-                print("🤖 Assistant: ", end="", flush=True)
+                console.print("🤖 Assistant: ", end="")
                 full_response = ""
+                final_result = None
+                
+                # Create a live display for streaming
                 async for chunk in rag_system.stream_chat(user_input, session_id):
-                    print(chunk, end="", flush=True)
-                    full_response += chunk
+                    if isinstance(chunk, Result):
+                        final_result = chunk
+                    else:
+                        print(chunk, end="", flush=True)
+                        full_response += chunk
                 
-                # NOTE: We'd need to manually track sources in streaming mode
-                # For now, get them with a regular call for metadata
-                result = await rag_system.chat(user_input, session_id)
-                if result.sources:
-                    print(result)
+                print() # Newline after stream
+                
+                if final_result and final_result.sources:
+                    console.print(Panel(
+                        f"[bold]Sources:[/bold] {', '.join(final_result.sources)}\n"
+                        f"[bold]Confidence:[/bold] {final_result.confidence:.2f}\n"
+                        f"[bold]Time:[/bold] {final_result.processing_time:.2f}s",
+                        title="Metadata", border_style="blue"
+                    ))
+
             else:
-                result = await rag_system.chat(user_input, session_id)
-                print(f"🤖 Assistant: {result.response}")
+                with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
+                    result = await rag_system.chat(user_input, session_id)
+                
+                console.print(Markdown(f"**🤖 Assistant:** {result.response}"))
                 
                 if result.sources:
-                    print(result)
+                    console.print(Panel(
+                        f"[bold]Sources:[/bold] {', '.join(result.sources)}\n"
+                        f"[bold]Confidence:[/bold] {result.confidence:.2f}\n"
+                        f"[bold]Time:[/bold] {result.processing_time:.2f}s",
+                        title="Metadata", border_style="blue"
+                    ))
                 
         except KeyboardInterrupt:
-            print("\n👋 Chat session ended.")
+            console.print("\n👋 Chat session ended.")
             break
         except Exception as e:
             logger.error(f"Error in chat: {e}")
-            print(f"❌ Error: {e}")
+            console.print(f"[red]❌ Error: {e}[/red]")
 
 async def handle_chat_command(system: RAGSystem, args: Any) -> None: 
     return await interactive_chat(system, args.session, args.stream)

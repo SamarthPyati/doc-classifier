@@ -16,6 +16,8 @@ probe/
 .DS_Store
 .env
 
+*.chat_history
+
 *sessions.json
 *.log
 *.ipynb

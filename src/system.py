@@ -196,16 +196,37 @@ class RAGSystem:
     async def stream_chat(self, message: str, session_id: Optional[str] = None):
         """ Stream chat response for real-time interaction """
         session_id = session_id or self.current_session_id
+        start_time = time.perf_counter()
         
         config = RunnableConfig({"configurable": {"session_id": session_id}})
         
         try:
+            full_response = ""
+            rag_context = None
+
             async for chunk in self.conversational_chain.astream(
                 {"question": message}, 
                 config=config
             ):
                 if "response" in chunk:
-                    yield chunk["response"]
+                    content = chunk["response"]
+                    full_response += content
+                    yield content
+                
+                if "rag_context" in chunk:
+                    rag_context = chunk["rag_context"]
+            
+            # Yield the final result object with metadata
+            if rag_context:
+                processing_time = time.perf_counter() - start_time
+                yield Result(
+                    response=full_response,
+                    sources=rag_context.sources,
+                    confidence=rag_context.confidence,
+                    num_sources=len(rag_context.sources),
+                    processing_time=processing_time,
+                    session_id=session_id
+                )
             
         except Exception as e:
             logger.error(f"Error streaming chat: {e}")
