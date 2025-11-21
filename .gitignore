@@ -17,6 +17,7 @@ probe/
 .env
 
 *.chat_history
+*.json.backup
 
 *sessions.json
 *.log

@@ -192,6 +192,10 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"Error processing chat message: {e}", exc_info=True)
             return Result(response=f"Error processing message: {str(e)}")
+        
+        finally:
+            # Save session state to disk
+            self.session_store.save()
 
     async def stream_chat(self, message: str, session_id: Optional[str] = None):
         """ Stream chat response for real-time interaction """
@@ -231,6 +235,10 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"Error streaming chat: {e}")
             yield f"Error: {str(e)}"
+        
+        finally:
+            # Save session state to disk
+            self.session_store.save()
 
     def get_chat_history(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """ Get chat history for a session """
@@ -242,7 +250,7 @@ class RAGSystem:
         formatted_history = []
         for message in history.messages:
             formatted_history.append({
-                "role": "human" if isinstance(message, HumanMessage) else "assistant",
+                "role": "user" if isinstance(message, HumanMessage) else "assistant",
                 "content": message.content,
                 "timestamp": getattr(message, 'timestamp', None)
             })
@@ -256,6 +264,23 @@ class RAGSystem:
         
         self.session_store.delete_session(session_id)
         logger.info(f"Cleared chat history for session: {session_id}")
+
+    async def generate_session_title(self, session_id: str, message: str) -> str:
+        """ Generate a short title for the session based on the first message """
+        try:
+            prompt = f"Generate a short, concise title (3-5 words) for a chat that starts with this message: '{message}'. Do not use quotes."
+            title = await self._llm.ainvoke(prompt)
+            
+            # Handle different return types from LLM (string or AIMessage)
+            if hasattr(title, 'content'):
+                title = title.content
+            
+            title = title.strip().replace('"', '')
+            self.session_store.set_session_title(session_id, title)
+            return title
+        except Exception as e:
+            logger.error(f"Error generating session title: {e}")
+            return "New Chat"
 
     def create_new_session(self) -> str:
         """ Create a new chat session """
