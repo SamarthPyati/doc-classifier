@@ -24,6 +24,7 @@ from src.config import RAGConfig, DEFAULT_RAG_CONFIG
 from src.embedding import Embeddings
 from src.document.chunking import get_chunker
 from src.document.classification import get_classifier
+from src.constants import ChunkerType
 
 import logging
 logger = logging.getLogger(__name__)
@@ -118,6 +119,12 @@ class DocumentProcessor:
 
     async def load_documents(self, multiprocess: bool = False, force_reload: bool = False) -> List[Document]:
         """ Load documents from the corpus """
+        # Disable multiprocessing for Semantic Chunking due to gRPC/asyncio issues in worker processes
+        if self.config.DocProcessor.chunker_type == ChunkerType.SEMANTIC_CHUNKER:
+            if multiprocess:
+                logger.info("Disabling multiprocessing for Semantic Chunking to avoid gRPC threading issues.")
+            multiprocess = False
+
         documents: List[Document] = []
         cache = self.load_cache() if not force_reload else {}
         new_cache = {}

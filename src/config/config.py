@@ -35,8 +35,8 @@ class DocProcessorSettings(BaseModel):
     chunker_type: ChunkerType = ChunkerType.RECURSIVE_CHARACTER_TEXT_SPLITTER
 
     # Chunk size to split the document in (Makes the model get precise context to answer better)
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
+    chunk_size: int = 2000
+    chunk_overlap: int = 500
 
     # PDF specific settings
     pdf_extract_images: bool = False
@@ -87,11 +87,11 @@ class DatabaseSettings(BaseModel):
     collection_name: str = "rag-index"
 
     # Max results to return after similarity search
-    max_results: int = 5
+    max_results: int = 10
 
     # NOTE: Set threshold to a lower value preferrably .2 or .3 if using a lightweight embedding model
     # Min threshold to classify as related in similarity search
-    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    similarity_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
      
     # TODO: Reranking
 
