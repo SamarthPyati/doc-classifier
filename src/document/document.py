@@ -126,10 +126,13 @@ class DocumentProcessor:
         if not corpus_path.exists(): 
             raise FileNotFoundError(f"Corpus path {self.config.corpus_path} not found.")
         
-        # Filter unsupported files 
+        # Filter unsupported files and exclude system/hidden files
         files_to_process = [
             f for f in corpus_path.rglob("*") 
-            if f.is_file() and f.suffix.lower() in self.config.DocProcessor.supported_extensions
+            if f.is_file() 
+            and f.suffix.lower() in self.config.DocProcessor.supported_extensions
+            and not f.name.startswith(".")  # Exclude hidden files (e.g., .cache.json)
+            and f.name != ".cache.json"  # Explicitly exclude cache file
         ]
         
         # TODO: Test whether earlier Mulitprocessing method is faster or new async method.
