@@ -92,18 +92,18 @@ class DocumentProcessor:
         self.config = config
         self.cache_path = Path(self.config.corpus_path) / '.cache.json'
     
+    def _get_file_hash_sync(self, file_path: Path) -> str:
+        """ Synchronous version of file hash for use in multiprocess mode """
+        h = hashlib.md5()
+        with file_path.open("rb") as f:
+            while chunk := f.read(8192):
+                h.update(chunk)
+        return h.hexdigest()
+    
     async def _get_file_hash(self, file_path: Path) -> str:
         """ Get the hash of file content by reading in chunks. Kept async so as to not block the event loop. """
         loop = asyncio.get_running_loop() 
-        
-        def _hash_sync(file_path: Path) -> str: 
-            h = hashlib.md5()
-            with file_path.open("rb") as f:
-                while chunk := f.read(8192):
-                    h.update(chunk)
-            return h.hexdigest()
-        
-        return await loop.run_in_executor(None, _hash_sync, file_path)
+        return await loop.run_in_executor(None, self._get_file_hash_sync, file_path)
 
 
     def load_cache(self) -> Dict[str, str]:
@@ -135,16 +135,16 @@ class DocumentProcessor:
             and f.name != ".cache.json"  # Explicitly exclude cache file
         ]
         
-        # TODO: Test whether earlier Mulitprocessing method is faster or new async method.
         # MULTIPROCESS
         if multiprocess:
-            worker_count: int | None = os.cpu_count() if not None else 4
+            worker_count: int = os.cpu_count() or 4
             with ProcessPoolExecutor(max_workers=worker_count) as executor:
                 future_to_file = {}
                 for file_path in files_to_process:
                     file_id = str(file_path)
                     try:
-                        current_hash = self._get_file_hash(file_path)
+                        # Use sync version in multiprocess mode
+                        current_hash = self._get_file_hash_sync(file_path)
                         new_cache[file_id] = current_hash
 
                         if not force_reload and cache.get(file_id) == current_hash:
@@ -161,10 +161,12 @@ class DocumentProcessor:
                     file_path = future_to_file[future]
                     try:
                         docs = future.result()
-                        if not docs:
-                            executor.shutdown()
-                        documents.extend(docs)
-                        logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
+                        # Continue processing even if a file returns empty docs
+                        if docs:
+                            documents.extend(docs)
+                            logger.info(f"Successfully loaded {len(docs)} document pages from {file_path.name}")
+                        else:
+                            logger.warning(f"No content loaded from {file_path.name}")
                     except Exception as e:
                         logger.error(f"An unexpected error occurred while processing {file_path.name}: {e}", exc_info=True)
         else:

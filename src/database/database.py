@@ -154,18 +154,38 @@ class PineconeManager(VectorStoreInterface):
             return None
 
     def add_documents(self, chunks: List[Document], force_rebuild: bool = False) -> bool:
-        if force_rebuild:
-            self.reset()
-        logger.info(f"Adding/updating {len(chunks)} chunks in Pinecone index '{self.index_name}'...")
-        self._db.add_documents(chunks, batch_size=100)
-        return True
+        try:
+            if force_rebuild:
+                self.reset()
+            
+            if not chunks:
+                logger.info("No documents to add.")
+                return True
+            
+            if not self._db:
+                logger.error("Database not initialized. Cannot add documents.")
+                return False
+            
+            logger.info(f"Adding/updating {len(chunks)} chunks in Pinecone index '{self.index_name}'...")
+            self._db.add_documents(chunks, batch_size=100)
+            return True
+        except Exception as e:
+            logger.error(f"Error adding documents to Pinecone: {e}", exc_info=True)
+            return False
 
     def reset(self) -> bool:
-        logger.warning(f"Deleting Pinecone index '{self.index_name}'...")
-        if self.pinecone_client.has_index(self.index_name):
-            self.pinecone_client.delete_index(self.index_name)
-        self._db = self._initialize_db()
-        return True
+        try:
+            logger.warning(f"Deleting Pinecone index '{self.index_name}'...")
+            if self.pinecone_client.has_index(self.index_name):
+                self.pinecone_client.delete_index(self.index_name)
+            self._db = self._initialize_db()
+            if self._db is None:
+                logger.error("Failed to reinitialize Pinecone database after reset.")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Error resetting Pinecone database: {e}", exc_info=True)
+            return False
 
 class VectorStoreManager:
     def __init__(self, config: RAGConfig = DEFAULT_RAG_CONFIG): 

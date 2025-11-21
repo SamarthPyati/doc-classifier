@@ -13,7 +13,6 @@ import time
 import uuid
 import asyncio
 from typing import List, Dict, Optional, Any
-import functools
 
 import logging
 logger = logging.getLogger(__name__)
@@ -48,8 +47,6 @@ class RAGSystem:
             self._llm = self.llm_factory.get_llm()
         return self._llm
 
-    # Cache repeated queries
-    @functools.lru_cache(maxsize=128)                       
     def _retrieve_context(self, query: str) -> RAGContext:
         """ Retrieve relevant documents using vector search """
         try:
@@ -155,7 +152,7 @@ class RAGSystem:
     async def chat(self, message: str, session_id: Optional[str] = None) -> Result:
         """ Process a chat message with conversation history """
         session_id = session_id or self.current_session_id
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         try:
             # Configure the runnable with session
@@ -167,7 +164,7 @@ class RAGSystem:
                 config=config
             )
             
-            processing_time = time.time() - start_time
+            processing_time = time.perf_counter() - start_time
             
             return Result(
                 response = result["response"],

@@ -10,7 +10,7 @@ class SessionStore:
     """ Class to store chat sessions with file management """
     def __init__(self, storage_path: str = "chat_sessions.json"): 
         self.storage_path: Path = Path(storage_path)
-        self.store: Dict[str, BaseChatMessageHistory] = {}
+        self.store: Dict[str, BaseChatMessageHistory] = self._load_from_disk()
 
     def _load_from_disk(self) -> Dict[str, BaseChatMessageHistory]:
         if not self.storage_path.exists():
